@@ -63,11 +63,11 @@ POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
 也可以直接使用本仓库脚本：
 
 ```bash
-export AWS_REGION=<region>
-export AWS_ACCOUNT_ID=<account-id>
 export AGENTCORE_ROLE_ARN=<role-arn>
 .venv/bin/python scripts/deploy_agentcore.py
 ```
+
+脚本会自动从 AWS STS 推导账号 ID，从当前 boto3 session 推导区域；也可以显式设置 `AWS_REGION` 和 `AWS_ACCOUNT_ID`。
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 

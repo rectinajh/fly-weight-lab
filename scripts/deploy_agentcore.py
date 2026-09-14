@@ -6,9 +6,11 @@ This script performs the container-image deployment path:
   3. create an AgentCore runtime
 
 Required environment variables:
-    AWS_REGION
-    AWS_ACCOUNT_ID
     AGENTCORE_ROLE_ARN
+
+Optional environment variables:
+    AWS_REGION          (falls back to the active boto3 session region)
+    AWS_ACCOUNT_ID      (falls back to the active STS caller identity)
 
 Optional environment variables:
     ECR_REPOSITORY      default: fly-weight-lab-agent
@@ -29,7 +31,7 @@ import sys
 import boto3
 
 
-REQUIRED_ENV = ("AWS_REGION", "AWS_ACCOUNT_ID", "AGENTCORE_ROLE_ARN")
+REQUIRED_ENV = ("AGENTCORE_ROLE_ARN",)
 
 
 def require_env(name: str) -> str:
@@ -65,9 +67,15 @@ def ensure_repository(region: str, repository: str) -> str:
 
 
 def main() -> None:
-    region = require_env("AWS_REGION")
-    account_id = require_env("AWS_ACCOUNT_ID")
     role_arn = require_env("AGENTCORE_ROLE_ARN")
+    region = os.environ.get("AWS_REGION") or boto3.Session().region_name
+    if not region:
+        raise SystemExit("Missing AWS_REGION and no active boto3 session region")
+
+    account_id = os.environ.get("AWS_ACCOUNT_ID")
+    if not account_id:
+        account_id = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
+
     repository = os.environ.get("ECR_REPOSITORY", "fly-weight-lab-agent")
     agent_name = os.environ.get("AGENT_NAME", "fly-weight-lab")
     image_tag = os.environ.get("IMAGE_TAG", "latest")
