@@ -1,0 +1,4 @@
+-r requirements.txt
+-r requirements-strands.txt
+-r requirements-agentcore.txt
+ollama>=0.6

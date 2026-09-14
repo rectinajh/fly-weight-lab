@@ -97,7 +97,10 @@
 - 真实 Janelia MaleCNS 蘑菇体连接组接入行为孪生的暴食风险耦合项，而非贴图。
 - `WeightLossAgent` 后台循环：每周摄入体重、重跑蜂群，只在平台期新出现或冠军方案真实改变时输出一个决策。
 - `WeightLossAgent` 状态持久化：当前方案、体重历史、平台期记忆可保存为 JSON 并恢复，重启不丢实验。
-- `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 可成功构造 `strands.Agent`；`run_swarm` / `is_plateau` 已暴露成 Strands 工具。
+- `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 默认用离线 MockModel 跑完整 tool-call 循环。
+- Strands 工具已拆成 `get_user_context`、`detect_plateau`、`simulate_candidate`、`evolve_champion`、`surface_decision`、`record_feedback` 六个窄工具。
+- 行为孪生支持从 CSV 日志拟合参数，个性化不再只是手调默认值。
+- 安全护栏、会话记忆、结构化遥测、离线评测脚本和 Vercel 静态前端均已落地。
 - `agentcore/main.py` 已用 `BedrockAgentCoreApp` 注册 `main` 入口，`/invocations` 与 `/ping` 路由本地验证通过。
 - `agentcore/main.py` 默认 local 模式：`POST /invocations` 发送 `{}` 即可真实跑蜂群，不需要模型或 AWS。
 - `{"mode":"agent","prompt":"..."}` 保留为可选模型驱动路径。
@@ -106,7 +109,8 @@
 
 下一阶段：
 
-- 可选用真实 AWS 凭据完成 AgentCore 部署，或改用 OpenAI/Anthropic/Ollama 等其他模型 provider。
+- 有模型 API 时把 `STRANDS_MODEL_PROVIDER` 切到 Ollama/OpenAI/Anthropic/Bedrock，录一条真实模型推理的 demo。
+- 把 `web/` 部署到 Vercel，并用公网后端地址替代 localhost。
 
 已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。
 

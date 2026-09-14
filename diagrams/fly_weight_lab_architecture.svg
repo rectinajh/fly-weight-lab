@@ -82,4 +82,5 @@
   <text x="1148" y="632" fill="#8aa0b8" font-size="16">deploy</text>
 
   <text x="70" y="838" fill="#637b96" font-size="15">Behavioral model, not a metabolic simulator. Connectome grounding is a structural prior, not a claim that a human brain equals a fly brain.</text>
+  <text x="70" y="864" fill="#8aa0b8" font-size="15">Includes CSV calibration, safety guardrails, durable memory, structured telemetry, offline evaluation, and a Vercel-ready web demo.</text>
 </svg>

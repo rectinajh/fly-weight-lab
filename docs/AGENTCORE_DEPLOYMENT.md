@@ -13,7 +13,9 @@
 ## 2. 本仓库已准备的内容
 
 - `agentcore/main.py`：`BedrockAgentCoreApp` 入口，包装 `build_strands_agent()`。
-- `flylab/strands_agent.py`：暴露 `run_swarm` 与 `is_plateau` 两个 Strands 工具。
+- 默认 local 模式：`POST /invocations` 发 `{}` 直接跑蜂群。
+- 可选 Strands 模式：`{"mode":"agent","prompt":"..."}`，默认用离线 MockModel。
+- `flylab/strands_agent.py`：暴露 `get_user_context`、`detect_plateau`、`simulate_candidate`、`evolve_champion`、`surface_decision`、`record_feedback` 六个 Strands 工具。
 - `requirements-strands.txt`：`strands-agents>=1.55`。
 - `requirements-agentcore.txt`：`bedrock-agentcore>=1.23`。
 - `Dockerfile`：linux/arm64 容器镜像。
@@ -36,6 +38,8 @@ POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
 
 默认请求不需要模型和 AWS。只有显式发送
 `{"mode":"agent","prompt":"..."}` 才会走 Strands 模型驱动路径。
+
+前端 `web/` 可部署到 Vercel；后端已开启 CORS，浏览器可以直接调用公网或本地后端地址。
 
 ## 3. 前置条件
 

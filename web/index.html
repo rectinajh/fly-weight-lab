@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fly Weight-Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Agents for Humans · Everyday Agents</p>
+        <h1>Fly Weight-Lab</h1>
+        <p class="lede">Your body runs one experiment. The flies run ten thousand.</p>
+      </header>
+
+      <section class="control">
+        <label for="backend">Backend URL</label>
+        <input id="backend" value="http://localhost:8080" placeholder="http://localhost:8080" />
+        <div class="buttons">
+          <button id="runLocal">Run local agent</button>
+          <button id="runAgent">Run Strands agent</button>
+        </div>
+      </section>
+
+      <section class="status">
+        <div><span class="dot" id="pingDot"></span><span id="pingText">Not checked</span></div>
+        <div id="error" class="error"></div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Champion protocol</h2>
+          <pre id="champion">Run the local agent to see the evolved protocol.</pre>
+        </article>
+        <article class="card">
+          <h2>Agent decision</h2>
+          <pre id="decision">Run the Strands agent to see one surfaced decision.</pre>
+        </article>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>

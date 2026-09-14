@@ -80,22 +80,31 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Decision surface** (`flylab/agent.py`) turns a champion protocol into one action plus one reason.
 - **Background agent loop** (`flylab/agent_loop.py`) ingests weekly weights, reruns the swarm, and surfaces a decision only when a plateau appears or the champion protocol genuinely changes.
 - **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
-- **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
-- **Verified SDK path** — `pip install -r requirements-strands.txt`, then `build_strands_agent()` constructs a `strands.Agent` without needing live AWS calls.
+- **Strands agent loop** (`flylab/strands_agent.py`) exposes six narrow tools and runs a complete tool-call loop with an offline MockModel by default.
+- **Real model providers** — set `STRANDS_MODEL_PROVIDER=ollama` (local) or `bedrock`/`openai` when credentials are available.
+- **Behavioral calibration** (`flylab/calibration.py`) fits `adherence`, `binge_sensitivity`, and `metabolic_adaptation` from a user's CSV log instead of hand-set defaults.
+- **Safety guardrails** (`flylab/safety.py`) block unsafe calorie/protein/sleep/window values and force escalation for out-of-scope profiles.
+- **Durable user memory** (`flylab/memory.py`) persists sessions and human feedback.
+- **Offline evaluation** (`flylab/evaluation.py`, `scripts/run_evals.py`) measures plateau detection and opposite-user personalization.
+- **Structured telemetry** (`flylab/telemetry.py`) emits JSON events and timing for local observability.
 - **AgentCore runtime entrypoint** (`agentcore/main.py`) wraps the project in `BedrockAgentCoreApp`; `/invocations` and `/ping` routes register successfully.
 - **Local-first default** — `POST /invocations` with `{}` runs the real swarm without a model or AWS credentials.
 - **Optional model-driven path** — `POST /invocations` with `{"mode":"agent","prompt":"..."}` calls the Strands agent.
 - **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
+- **Live demo UI** (`web/`) is a Vercel-ready static frontend that drives the local or hosted backend.
 
 Runnable demos:
 
 - `python examples/demo_plateau_breaker.py` — two users evolve opposite protocols.
 - `python examples/demo_connectome.py` — shows how real connectome grounding changes the recommendation.
 - `python examples/demo_agent.py` — 12-week background agent that stays quiet most weeks and surfaces only real decisions.
+- `python -m uvicorn agentcore.main:app --host 0.0.0.0 --port 8080` — local HTTP backend for the web demo.
+- `python scripts/run_evals.py` — offline evaluation scorecard.
+- `python scripts/calibrate_twin.py <data.csv>` — fit the twin from real logs.
 
 Verification:
 
-- `python tests/test_evolution.py -v` — genotype, swarm, connectome loading, and agent-loop quietness tests.
+- `python -m unittest discover -s tests -v` — calibration, safety, memory, Strands local loop, genotype, swarm, and connectome tests.
 
 ## Repository Layout
 
@@ -104,16 +113,20 @@ Verification:
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
 - [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
 - [`docs/AGENTCORE_DEPLOYMENT.md`](./docs/AGENTCORE_DEPLOYMENT.md) — AWS Bedrock AgentCore deployment guide.
+- [`docs/LOCAL_DEMO.md`](./docs/LOCAL_DEMO.md) — no-AWS local backend and Vercel frontend guide.
+- [`docs/EVALUATION.md`](./docs/EVALUATION.md) — offline evaluation reference numbers.
 - [`assets/evolution_dashboard.png`](./assets/evolution_dashboard.png) — polished 2880x1600 evolution dashboard generated from real runs.
 - [`diagrams/fly_weight_lab_architecture.svg`](./diagrams/fly_weight_lab_architecture.svg) — editable architecture diagram.
 - [`diagrams/fly_weight_lab_architecture.png`](./diagrams/fly_weight_lab_architecture.png) — architecture diagram PNG for submissions.
 - [`requirements-strands.txt`](./requirements-strands.txt) — optional Strands Agents SDK integration.
 - [`requirements-agentcore.txt`](./requirements-agentcore.txt) — optional AgentCore runtime dependency.
+- [`requirements-local.txt`](./requirements-local.txt) — local model provider and full test dependencies.
 - [`agentcore/`](./agentcore) — deployable AgentCore runtime entrypoint.
 - [`Dockerfile`](./Dockerfile) — linux/arm64 container image for AgentCore Runtime.
-- [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
+- [`web/`](./web) — Vercel-ready live demo frontend.
+- [`flylab/`](./flylab) — swarm, twin, calibration, safety, memory, evaluation, telemetry, Strands tools, and background agent loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
-- [`tests/`](./tests) — automated verification.
+- [`tests/`](./tests) — automated verification for core and advanced paths.
 - [`scripts/build_connectome.py`](./scripts/build_connectome.py) — reproducible download/extract of the real mushroom body.
 
 ## License

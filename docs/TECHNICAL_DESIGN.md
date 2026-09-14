@@ -73,9 +73,10 @@
 可选 Strands 桥接：
 
 - `flylab/strands_agent.py` 的 `build_strands_agent()` 在安装 `strands-agents` 后可用。
-- 暴露 `run_swarm` 与 `is_plateau` 两个工具，让模型驱动 agent 调用本项目的蜂群与平台期检测。
-- 默认 Bedrock provider 需要 AWS 凭据与模型访问权限；本地核心演示不依赖它。
-- 已验证：`pip install -r requirements-strands.txt` 后，`build_strands_agent()` 返回 `strands.Agent` 实例，构造阶段无需调用 AWS。
+- 默认 `STRANDS_MODEL_PROVIDER=mock`，使用确定性的 `MockModel` 跑完整 tool-call 循环，不需要 API key。
+- 设置 `STRANDS_MODEL_PROVIDER=ollama` 时使用 `OllamaModel` 和本地模型；也可扩展 OpenAI/Anthropic/Bedrock。
+- 暴露六个窄工具，让模型组合调用，而不是一个 god function。
+- 已验证：`build_strands_agent(provider="mock")` 能连续调用 `evolve_champion` 和 `surface_decision` 并正常结束。
 
 AgentCore 部署入口：
 
@@ -179,12 +180,21 @@ fitness = w1*total_loss + w2*adherence
 | `flylab/connectome.py` | Janelia MaleCNS 蘑菇体参数加载与连接组构建 |
 | `flylab/agent.py` | 冠军方案翻译成一个决策 + 一句理由 |
 | `flylab/agent_loop.py` | 后台 agent 循环 + 状态保存/恢复（JSON 持久化） |
-| `flylab/strands_agent.py` | 可选 Strands Agents SDK 桥接 |
+| `flylab/strands_agent.py` | 六个窄工具 + MockModel + 真实 provider 工厂 |
+| `flylab/calibration.py` | 从 CSV 日志拟合行为孪生参数 |
+| `flylab/safety.py` | 热量/蛋白/睡眠/窗口护栏与医疗升级 |
+| `flylab/memory.py` | 用户会话与反馈持久化 |
+| `flylab/evaluation.py` | 平台期检测与个性化离线评测 |
+| `flylab/telemetry.py` | 结构化 JSON 事件与计时 |
 | `agentcore/main.py` | Bedrock AgentCore Runtime 部署入口 |
 | `scripts/make_dashboard.py` | 用真实运行结果生成 2880x1600 进化看板 |
+| `scripts/run_evals.py` | 输出离线评测 scorecard |
+| `scripts/calibrate_twin.py` | 从 CSV 拟合并输出孪生参数 |
 | `scripts/deploy_agentcore.py` | ECR 构建推送 + AgentCore runtime 创建 |
+| `web/` | Vercel-ready 静态演示前端 |
 | `examples/demo_agent.py` | 12 周后台 agent 演示 |
-| `tests/test_evolution.py` | 自动验证：基因型、蜂群、连接组、后台循环安静性 |
+| `tests/test_evolution.py` | 基因型、蜂群、连接组、后台循环安静性 |
+| `tests/test_advanced.py` | 校准、安全、记忆、评测、Strands 本地循环 |
 
 ## 9. 六周落地计划
 

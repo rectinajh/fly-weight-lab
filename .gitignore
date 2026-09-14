@@ -22,3 +22,5 @@ data/*
 .idea/
 .vscode/
 .gstack/
+.flylab_memory/
+.vercel/

@@ -6,11 +6,8 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY requirements.txt requirements-strands.txt requirements-agentcore.txt ./
-RUN pip install --no-cache-dir \
-    -r requirements.txt \
-    -r requirements-strands.txt \
-    -r requirements-agentcore.txt
+COPY requirements.txt requirements-strands.txt requirements-agentcore.txt requirements-local.txt ./
+RUN pip install --no-cache-dir -r requirements-local.txt
 
 COPY flylab ./flylab
 COPY agentcore ./agentcore

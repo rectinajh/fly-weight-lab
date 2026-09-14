@@ -15,6 +15,7 @@ from .agent import Decision, surface_decision
 from .connectome import ConnectomeParams, load_params
 from .evolution import Swarm
 from .genotype import Fly
+from .safety import evaluate_protocol, safe_champion
 from .twin import BehavioralTwin, UserProfile
 
 
@@ -91,6 +92,10 @@ class WeightLossAgent:
             )
 
         champion, _ = self._run_swarm()
+        safety = evaluate_protocol(champion, self.profile)
+        if not safety.safe:
+            champion = safe_champion(champion, self.profile)
+            safety = evaluate_protocol(champion, self.profile)
         champion_fp = self._fingerprint(champion)
         current_fp = self._fingerprint(self.current)
 
