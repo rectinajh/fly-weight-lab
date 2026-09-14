@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@aws-sdk/client-bedrock-agentcore": "3.1132.0",
-    "@aws-sdk/client-bedrock-agentcore-control": "3.1132.0"
+    "@aws-sdk/client-bedrock-agentcore-control": "3.1132.0",
+    "@vercel/oidc-aws-credentials-provider": "3.3.7"
   }
 }

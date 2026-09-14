@@ -106,13 +106,21 @@ POST /invocations (payload {})
 
 线上演示：https://fly-weight-lab-demo.vercel.app
 
-代理需要以下 Vercel Production 环境变量（值已写入 Vercel，不在仓库中）：
+代理使用 Vercel ↔ AWS OIDC 联合身份，不再使用长期 access key。浏览器函数通过 `@vercel/oidc-aws-credentials-provider` 换取短期 `sts:AssumeRoleWithWebIdentity` 凭据。
 
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+需要的 Vercel Production 环境变量（值已写入 Vercel，不在仓库中）：
+
+- `AWS_ROLE_ARN=arn:aws:iam::032529260721:role/flyweight-vercel-oidc-role`
 - `AWS_REGION=us-east-1`
 - `AGENTCORE_RUNTIME_ARN`
 - `AGENTCORE_RUNTIME_ID`
+
+OIDC 侧由 [scripts/setup_vercel_oidc_role.py](../scripts/setup_vercel_oidc_role.py) 创建：
+
+- IAM OIDC provider：`oidc.vercel.com/rectinajhs-projects`
+- Audience：`https://vercel.com/rectinajhs-projects`
+- Trust 限定：`owner:rectinajhs-projects:project:web:environment:production`
+- 权限仅 `bedrock-agentcore:InvokeAgentRuntime` 和 `bedrock-agentcore:GetAgentRuntime`，资源限定到当前 runtime ARN 及其 `runtime-endpoint/*` 子资源。
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 

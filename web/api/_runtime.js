@@ -2,6 +2,9 @@ const {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } = require("@aws-sdk/client-bedrock-agentcore");
+const {
+  awsCredentialsProvider,
+} = require("@vercel/oidc-aws-credentials-provider");
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const RUNTIME_ARN = process.env.AGENTCORE_RUNTIME_ARN;
@@ -34,8 +37,16 @@ async function invokeRuntime(payload) {
   if (!RUNTIME_ARN) {
     throw httpError("AGENTCORE_RUNTIME_ARN is not configured", 500);
   }
+  if (!process.env.AWS_ROLE_ARN) {
+    throw httpError("AWS_ROLE_ARN is not configured", 500);
+  }
 
-  const client = new BedrockAgentCoreClient({ region: REGION });
+  const client = new BedrockAgentCoreClient({
+    region: REGION,
+    credentials: awsCredentialsProvider({
+      roleArn: process.env.AWS_ROLE_ARN,
+    }),
+  });
   const output = await client.send(
     new InvokeAgentRuntimeCommand({
       agentRuntimeArn: RUNTIME_ARN,
