@@ -61,6 +61,20 @@
 - 触发打扰的三类事件：新冠军明显更优 / 风险越线（平台期、坚持度下滑、暴食预警）/ 每周例行更新。
 - 每次只输出一个决策：一句话 + 证据 + 一个本周动作。
 
+已实现核心逻辑（无需外部 API 也能跑通）：
+
+- `flylab/agent_loop.py` 的 `WeightLossAgent` 持有当前方案、体重历史和连接组参数。
+- 每周 `ingest(weight_kg)` 摄入体重，`tick(week)` 重跑蜂群。
+- 通过「冠军方案指纹」判断是否真的变化；通过短窗口体重差检测平台期。
+- 新检测到平台期时给行为孪生的 `metabolic_adaptation` 加 0.05，迫使下一轮搜索换新杠杆，避免重复推同一条建议。
+- 只有 `new_plateau or changed` 且达到重推间隔时才调用决策面，其余周安静。
+
+可选 Strands 桥接：
+
+- `flylab/strands_agent.py` 的 `build_strands_agent()` 在安装 `strands-agents` 后可用。
+- 暴露 `run_swarm` 与 `is_plateau` 两个工具，让模型驱动 agent 调用本项目的蜂群与平台期检测。
+- 默认 Bedrock provider 需要 AWS 凭据与模型访问权限；本地核心演示不依赖它。
+
 ### 2.5 进化看板
 
 - 展示蜂群代数、种群分布、红叉/绿勾、冠军方案家谱。
@@ -141,6 +155,22 @@ fitness = w1*total_loss + w2*adherence
 3. 只在检测到平台期或坚持度下滑时，推一个破局杠杆。
 
 这一片能独立成片、独立演示，后续再扩成完整实验室。
+
+## 8.1 已落地代码清单
+
+| 模块 | 职责 |
+|---|---|
+| `flylab/genotype.py` | 一只果蝇 = 一套减脂方案基因型 |
+| `flylab/twin.py` | 行为数字孪生：坚持度、体重轨迹、暴食风险 |
+| `flylab/fitness.py` | 适应度函数，坚持度权重最高 |
+| `flylab/evolution.py` | 锦标赛选择、交叉、变异、精英保留 |
+| `flylab/plateau.py` | 平台期检测 |
+| `flylab/connectome.py` | Janelia MaleCNS 蘑菇体参数加载与连接组构建 |
+| `flylab/agent.py` | 冠军方案翻译成一个决策 + 一句理由 |
+| `flylab/agent_loop.py` | 后台 agent 循环，只在真变化时打扰 |
+| `flylab/strands_agent.py` | 可选 Strands Agents SDK 桥接 |
+| `examples/demo_agent.py` | 12 周后台 agent 演示 |
+| `tests/test_evolution.py` | 自动验证：基因型、蜂群、连接组、后台循环安静性 |
 
 ## 9. 六周落地计划
 

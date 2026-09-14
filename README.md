@@ -70,13 +70,35 @@ Fly Weight-Lab does not treat the fruit fly as a metaphor alone. The behavioral 
 
 That last number is load-bearing. Dieting leans on punishment (restriction), but the real wiring says reward is stronger, so restriction produces disproportionate craving pressure. The grounded twin therefore rates aggressive diets as riskier and recommends gentler, sustainable protocols.
 
+## Current Implementation Status
+
+The repository now contains a runnable end-to-end MVP, not just the idea:
+
+- **Genetic swarm** (`flylab/evolution.py`, `flylab/genotype.py`, `flylab/fitness.py`) evolves a personalized protocol.
+- **Behavioral twin** (`flylab/twin.py`) predicts adherence, weight trajectory, and binge risk, honestly labeled as a behavioral model rather than a metabolic simulator.
+- **Real connectome grounding** (`flylab/connectome.py`, `data/mb_summary.json`) feeds the Janelia mushroom-body prior into binge-risk coupling.
+- **Decision surface** (`flylab/agent.py`) turns a champion protocol into one action plus one reason.
+- **Background agent loop** (`flylab/agent_loop.py`) ingests weekly weights, reruns the swarm, and surfaces a decision only when a plateau appears or the champion protocol genuinely changes.
+- **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
+
+Runnable demos:
+
+- `python examples/demo_plateau_breaker.py` — two users evolve opposite protocols.
+- `python examples/demo_connectome.py` — shows how real connectome grounding changes the recommendation.
+- `python examples/demo_agent.py` — 12-week background agent that stays quiet most weeks and surfaces only real decisions.
+
+Verification:
+
+- `python tests/test_evolution.py -v` — genotype, swarm, connectome loading, and agent-loop quietness tests.
+
 ## Repository Layout
 
 - [`README.md`](./README.md) — this document.
 - [`docs/PRD.md`](./docs/PRD.md) — product requirements.
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
-- [`flylab/`](./flylab) — the genetic swarm, behavioral twin, and connectome grounding.
-- [`examples/`](./examples) — runnable demos (plateau breaker + connectome).
+- [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
+- [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
+- [`tests/`](./tests) — automated verification.
 - [`scripts/build_connectome.py`](./scripts/build_connectome.py) — reproducible download/extract of the real mushroom body.
 
 ## License

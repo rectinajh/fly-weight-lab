@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from flylab.evolution import Swarm
 from flylab.connectome import load_params
+from flylab.agent_loop import WeightLossAgent
 from flylab.genotype import CALORIE_FLOOR, Fly
 from flylab.twin import BehavioralTwin, UserProfile
 
@@ -53,6 +54,43 @@ class TestConnectome(unittest.TestCase):
         self.assertEqual(params.n_mbon, 97)
         self.assertGreater(params.reward_punishment_ratio, 1.0)
         self.assertLessEqual(params.context_recurrence_ratio, 1.0)
+
+
+class TestAgentLoop(unittest.TestCase):
+    def test_surfaces_on_plateau_and_quiet_otherwise(self):
+        profile = UserProfile(
+            name="test",
+            start_weight_kg=88.0,
+            adherence_base=0.6,
+            binge_sensitivity=0.6,
+            metabolic_adaptation=0.5,
+            maintenance_kcal=2300.0,
+        )
+        current = Fly(
+            calorie_target=1500,
+            protein_pct=0.40,
+            carb_pct=0.25,
+            meal_window=8,
+            meal_count=3,
+            late_night_rule=False,
+            workout_freq=5,
+            workout_type="cardio",
+            sleep_target=7.0,
+            refeed_schedule="none",
+            step_target=10000,
+        )
+        agent = WeightLossAgent(profile, current, connectome=load_params())
+        curve = BehavioralTwin(profile, connectome=load_params()).simulate(current, 12)
+
+        surfaced_weeks = []
+        for week in range(1, 13):
+            agent.ingest(float(curve[week]))
+            decision = agent.tick(week)
+            if decision is not None:
+                surfaced_weeks.append(week)
+
+        self.assertGreaterEqual(len(surfaced_weeks), 1)
+        self.assertLess(len(surfaced_weeks), 12)
 
 
 if __name__ == "__main__":
