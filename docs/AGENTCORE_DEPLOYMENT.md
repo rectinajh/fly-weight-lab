@@ -122,6 +122,12 @@ OIDC 侧由 [scripts/setup_vercel_oidc_role.py](../scripts/setup_vercel_oidc_rol
 - Trust 限定：`owner:rectinajhs-projects:project:web:environment:production`
 - 权限仅 `bedrock-agentcore:InvokeAgentRuntime` 和 `bedrock-agentcore:GetAgentRuntime`，资源限定到当前 runtime ARN 及其 `runtime-endpoint/*` 子资源。
 
+### GitHub 推送自动部署
+
+连接到 GitHub 的 Vercel 项目是 `fly-weight-lab`，它的 Root Directory 设为 `web`，Framework 设为 `Other`。这样每次 push 到 `main` 都会重新构建真实前端（静态页 + `web/api/*` Serverless 代理），不会再触发 Python entrypoint 检测错误。该项目同样需要上面四个 Production 环境变量。
+
+> 常见坑：如果 Root Directory 停留在仓库根目录且 Framework 为 `Python`，Vercel 会尝试寻找 Python 入口并报 `No python entrypoint found`，提交状态就会显示红色失败——那其实是部署失败，不是 GitHub Actions。
+
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 
 AgentCore Runtime 要求：
