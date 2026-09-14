@@ -93,6 +93,8 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
 - **Live demo UI** (`web/`) is a Vercel-ready static frontend that drives the local or hosted backend.
 
+Public demo: [fly-weight-lab-demo.vercel.app](https://fly-weight-lab-demo.vercel.app)
+
 Runnable demos:
 
 - `python examples/demo_plateau_breaker.py` — two users evolve opposite protocols.

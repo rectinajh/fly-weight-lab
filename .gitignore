@@ -24,3 +24,4 @@ data/*
 .gstack/
 .flylab_memory/
 .vercel/
+.vercel

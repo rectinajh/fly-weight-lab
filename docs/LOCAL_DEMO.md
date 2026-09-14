@@ -29,8 +29,12 @@ curl -X POST http://127.0.0.1:8080/invocations \
 
 直接在浏览器打开 `web/index.html`，后端地址填 `http://localhost:8080`。
 
-部署到 Vercel 时，把仓库根目录作为项目根目录，`vercel.json` 已指向 `web/`。
+部署到 Vercel 时，使用 `web/` 目录作为项目根目录，`web/vercel.json` 已配置为静态站点。
 浏览器访问的是公网后端地址，因此需要把本地后端通过 ngrok/cloudflared 暴露，或部署到任意 Python 托管平台。
+
+当前公开前端：
+
+[https://fly-weight-lab-demo.vercel.app](https://fly-weight-lab-demo.vercel.app)
 
 ## 4. 使用真实本地模型
 
