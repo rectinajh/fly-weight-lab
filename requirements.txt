@@ -1,0 +1,3 @@
+numpy>=1.24
+# Optional, for the evolution chart:
+# matplotlib>=3.7
