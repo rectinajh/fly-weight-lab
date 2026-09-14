@@ -49,6 +49,7 @@ class WeightLossAgent:
         self.prev_plateau = False
         self.last_surface_week: int | None = None
         self.last_fingerprint: tuple | None = None
+        self.last_escalation_surfaced = False
         self.history: list[dict] = []
 
     def ingest(self, weight_kg: float) -> None:
@@ -108,7 +109,16 @@ class WeightLossAgent:
 
         surfaced = False
         decision: Decision | None = None
-        if due and (new_plateau or changed):
+        if due and safety.escalation and not self.last_escalation_surfaced:
+            decision = Decision(
+                headline="需要先升级给专业医疗人员",
+                action="暂停自动调整方案，并把你的真实体重轨迹交给医生或营养师复核",
+                reason="你的输入数据触发了安全红旗。这个 agent 只做行为哨兵，不诊断、不处方。",
+            )
+            self.last_escalation_surfaced = True
+            self.last_surface_week = week
+            surfaced = True
+        elif due and (new_plateau or changed):
             decision = surface_decision(self.current, champion, plateau, self.profile)
             self.current = champion
             self.last_surface_week = week
@@ -122,6 +132,7 @@ class WeightLossAgent:
                 "plateau": plateau,
                 "surfaced": surfaced,
                 "action": decision.action if decision else None,
+                "safety": safety.as_dict(),
             }
         )
         return decision
@@ -138,6 +149,7 @@ class WeightLossAgent:
             "last_fingerprint": (
                 list(self.last_fingerprint) if self.last_fingerprint is not None else None
             ),
+            "last_escalation_surfaced": self.last_escalation_surfaced,
             "history": self.history,
         }
 
@@ -166,6 +178,7 @@ class WeightLossAgent:
         agent.last_surface_week = state.get("last_surface_week")
         fingerprint = state.get("last_fingerprint")
         agent.last_fingerprint = tuple(fingerprint) if fingerprint is not None else None
+        agent.last_escalation_surfaced = bool(state.get("last_escalation_surfaced", False))
         agent.history = list(state.get("history", []))
         return agent
 

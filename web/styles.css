@@ -106,6 +106,8 @@ button {
   padding: 20px;
 }
 
+.wide { grid-column: 1 / -1; }
+
 h2 { margin: 0 0 12px; font-size: 18px; }
 
 pre {

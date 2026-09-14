@@ -13,10 +13,13 @@ Optional model-driven payload:
 from __future__ import annotations
 
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from bedrock_agentcore import BedrockAgentCoreApp
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from flylab.connectome import load_params
 from flylab.evolution import Swarm
@@ -89,6 +92,37 @@ def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
 
+async def _business_flow(request: Request) -> JSONResponse:
+    """Run the real-data product loop from an uploaded CSV payload."""
+    from flylab.business_flow import run_business_flow
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse({"error": "request body must be JSON"}, status_code=400)
+
+    user_id = str(payload.get("user_id", "uploaded_user"))
+    weight_records = payload.get("weight_records")
+    activity_records = payload.get("activity_records", [])
+    if not isinstance(weight_records, list) or not weight_records:
+        return JSONResponse(
+            {"error": "weight_records must be a non-empty list"},
+            status_code=400,
+        )
+
+    report = run_business_flow(
+        user_id,
+        weight_records,
+        activity_records,
+        population_size=int(payload.get("population_size", 250)),
+        generations=int(payload.get("generations", 25)),
+        seed=int(payload.get("seed", 7)),
+        memory_root=Path("runs/memory"),
+        reset_memory=True,
+    )
+    return JSONResponse(report)
+
+
 @app.entrypoint
 async def main(payload: dict[str, Any]) -> dict[str, Any]:
     """Run the fruit-fly agent and return a serializable result.
@@ -108,3 +142,6 @@ async def main(payload: dict[str, Any]) -> dict[str, Any]:
             return {"result": str(result)}
 
         return _run_local_swarm(payload)
+
+
+app.add_route("/business-flow", _business_flow, methods=["POST"])

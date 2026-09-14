@@ -30,7 +30,11 @@ class UserMemoryStore:
 
     def append_feedback(self, user_id: str, feedback: dict[str, Any]) -> dict[str, Any]:
         state = self.load(user_id)
-        state.setdefault("feedback", []).append(feedback)
+        history = state.setdefault("feedback", [])
+        # Deterministic demo flows can re-run the same checkpoint without
+        # creating duplicate rows that look like multiple user actions.
+        if not history or history[-1] != feedback:
+            history.append(feedback)
         state["feedback"] = state["feedback"][-200:]
         self.save(user_id, state)
         return state

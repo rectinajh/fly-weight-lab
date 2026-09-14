@@ -20,7 +20,15 @@
         <div class="buttons">
           <button id="runLocal">Run local agent</button>
           <button id="runAgent">Run Strands agent</button>
+          <button id="runBusiness">Run real CSV flow</button>
         </div>
+      </section>
+
+      <section class="control">
+        <label for="weightFile">Real Fitbit weight CSV</label>
+        <input id="weightFile" type="file" accept=".csv,text/csv" />
+        <label for="activityFile">Optional Fitbit activity CSV</label>
+        <input id="activityFile" type="file" accept=".csv,text/csv" />
       </section>
 
       <section class="status">
@@ -36,6 +44,10 @@
         <article class="card">
           <h2>Agent decision</h2>
           <pre id="decision">Run the Strands agent to see one surfaced decision.</pre>
+        </article>
+        <article class="card wide">
+          <h2>Real business flow</h2>
+          <pre id="business">Upload a real weight CSV to calibrate, run background ticks, surface a decision, and persist feedback.</pre>
         </article>
       </section>
     </main>

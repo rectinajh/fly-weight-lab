@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -29,6 +29,7 @@ class CalibrationResult:
     n_weeks: int
     observed_loss_kg: float
     adherence_mean: float
+    adherence_source: str
     weekly_volatility_kg: float
 
 
@@ -39,6 +40,47 @@ def load_records(path: str | Path) -> list[dict]:
             if row.get("date") and row.get("weight_kg"):
                 rows.append(row)
     return rows
+
+
+def parse_fitbit_date(value: str) -> date:
+    """Parse Fitbit's ``m/d/yyyy`` or ``m/d/yyyy h:mm:ss AM/PM`` timestamps."""
+    value = value.strip()
+    for fmt in ("%m/%d/%Y %I:%M:%S %p", "%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError(f"Unrecognized Fitbit date: {value!r}")
+
+
+def load_fitbit_weight_records(
+    path: str | Path,
+    user_id: str | None = None,
+) -> list[dict]:
+    """Load and normalize a raw Fitabase ``weightLogInfo_merged.csv`` export.
+
+    Returns one record per row with fields ``date``, ``weight_kg`` and
+    ``is_manual_report``. These are real observations, not synthetic logs.
+    """
+    records: list[dict] = []
+    with Path(path).open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if user_id is not None and row.get("Id") != user_id:
+                continue
+            raw_date = row.get("Date", "")
+            raw_weight = row.get("WeightKg", "")
+            if not raw_date or not raw_weight:
+                continue
+            records.append(
+                {
+                    "date": parse_fitbit_date(raw_date).isoformat(),
+                    "weight_kg": round(float(raw_weight), 4),
+                    "is_manual_report": row.get("IsManualReport", "").strip().lower()
+                    == "true",
+                }
+            )
+    records.sort(key=lambda row: row["date"])
+    return records
 
 
 def _weekly_averages(records: list[dict]) -> list[float]:
@@ -66,6 +108,7 @@ def fit_profile(records: list[dict], name: str = "calibrated_user") -> Calibrati
     if not records:
         raise ValueError("Cannot calibrate from an empty record set")
 
+    records = sorted(records, key=lambda row: date.fromisoformat(row["date"][:10]))
     weights = [float(row["weight_kg"]) for row in records]
     adherence = [
         float(row["adherence"])
@@ -76,7 +119,16 @@ def fit_profile(records: list[dict], name: str = "calibrated_user") -> Calibrati
     weekly = _weekly_averages(records)
     start_weight_kg = float(weights[0])
     observed_loss_kg = start_weight_kg - float(weights[-1])
-    adherence_mean = float(np.mean(adherence)) if adherence else 0.65
+    adherence_source = "explicit" if adherence else "neutral_prior"
+    if adherence:
+        adherence_mean = float(np.mean(adherence))
+    else:
+        # Weight-only logs cannot measure whether a person followed a diet.
+        # We therefore keep adherence as an explicitly neutral model prior and
+        # let the swarm choose protocols that are robust across plausible
+        # adherence levels, rather than pretending a weight log proves
+        # behavioral consistency.
+        adherence_mean = 0.60
 
     weekly_deltas = np.diff(weekly)
     weekly_volatility_kg = float(np.std(weekly_deltas)) if len(weekly_deltas) > 1 else 0.4
@@ -111,9 +163,18 @@ def fit_profile(records: list[dict], name: str = "calibrated_user") -> Calibrati
         n_weeks=len(weekly),
         observed_loss_kg=round(observed_loss_kg, 2),
         adherence_mean=round(adherence_mean, 3),
+        adherence_source=adherence_source,
         weekly_volatility_kg=round(weekly_volatility_kg, 2),
     )
 
 
 def fit_from_csv(path: str | Path, name: str = "calibrated_user") -> CalibrationResult:
     return fit_profile(load_records(path), name=name)
+
+
+def fit_from_fitbit_csv(
+    path: str | Path,
+    user_id: str | None = None,
+    name: str = "fitbit_user",
+) -> CalibrationResult:
+    return fit_profile(load_fitbit_weight_records(path, user_id=user_id), name=name)

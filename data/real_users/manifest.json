@@ -1,0 +1,14 @@
+{
+  "source": "Zenodo 10.5281/zenodo.53894",
+  "license": "CC-BY-4.0",
+  "citation": "Furberg, R., Brinton, J., Keating, M., & Ortiz, A. (2016). Crowd-sourced Fitbit datasets 03.12.2016-05.12.2016. Zenodo.",
+  "normalized_at": "2026-09-14T21:22:09.239224Z",
+  "weight_users": {
+    "6962181067": {
+      "n_records": 14
+    },
+    "8877689391": {
+      "n_records": 9
+    }
+  }
+}

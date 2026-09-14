@@ -11,6 +11,8 @@ venv/
 data/*
 !data/mb_neurons.csv
 !data/mb_summary.json
+!data/real_users/
+!data/real_users/**
 
 # OS
 .DS_Store
@@ -23,5 +25,6 @@ data/*
 .vscode/
 .gstack/
 .flylab_memory/
+runs/
 .vercel/
 .vercel

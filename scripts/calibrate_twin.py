@@ -28,6 +28,7 @@ def main() -> None:
                 "n_weeks": result.n_weeks,
                 "observed_loss_kg": result.observed_loss_kg,
                 "adherence_mean": result.adherence_mean,
+                "adherence_source": result.adherence_source,
                 "weekly_volatility_kg": result.weekly_volatility_kg,
             },
             indent=2,

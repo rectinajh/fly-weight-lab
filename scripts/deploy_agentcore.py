@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import base64
 import os
+import shutil
 import subprocess
 import sys
 
@@ -66,6 +67,37 @@ def ensure_repository(region: str, repository: str) -> str:
         return response["repository"]["repositoryUri"]
 
 
+def build_arm64_image(local_image: str) -> None:
+    """Build a linux/arm64 image with buildx when available, else plain Docker."""
+    if shutil.which("docker") is None:
+        raise SystemExit("Docker is required but was not found on PATH")
+
+    buildx_cmd = [
+        "docker",
+        "buildx",
+        "build",
+        "--platform",
+        "linux/arm64",
+        "-t",
+        local_image,
+        ".",
+    ]
+    fallback_cmd = [
+        "docker",
+        "build",
+        "--platform",
+        "linux/arm64",
+        "-t",
+        local_image,
+        ".",
+    ]
+    try:
+        run(buildx_cmd)
+    except SystemExit:
+        print("buildx is unavailable; falling back to `docker build`.")
+        run(fallback_cmd)
+
+
 def main() -> None:
     role_arn = require_env("AGENTCORE_ROLE_ARN")
     region = os.environ.get("AWS_REGION") or boto3.Session().region_name
@@ -84,18 +116,7 @@ def main() -> None:
     local_image = f"{repository}:{image_tag}"
     remote_image = f"{registry}/{repository}:{image_tag}"
 
-    run(
-        [
-            "docker",
-            "buildx",
-            "build",
-            "--platform",
-            "linux/arm64",
-            "-t",
-            local_image,
-            ".",
-        ]
-    )
+    build_arm64_image(local_image)
 
     repository_uri = ensure_repository(region, repository)
     if repository_uri != remote_image:

@@ -100,6 +100,10 @@
 - `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 默认用离线 MockModel 跑完整 tool-call 循环。
 - Strands 工具已拆成 `get_user_context`、`detect_plateau`、`simulate_candidate`、`evolve_champion`、`surface_decision`、`record_feedback` 六个窄工具。
 - 行为孪生支持从 CSV 日志拟合参数，个性化不再只是手调默认值。
+- 已接入真实 Fitbit 数据：Zenodo `10.5281/zenodo.53894`，并把小规模归一化结果提交到 `data/real_users/`。
+- 真实业务流可一键跑通：`scripts/run_business_flow.py` 完成上传 → 校准 → 周循环 → 只冒出一个决策 → 用下一周真实体重结果写回记忆。
+- 适应度函数已改为「可持续减重区间」优化，不再奖励“很温和但不掉秤”的冠军；两个同目标用户能稳定进化出相反方案。
+- `web/` 支持上传真实 CSV，并调用 `/business-flow` 接口，而不是只点一个无数据按钮。
 - 安全护栏、会话记忆、结构化遥测、离线评测脚本和 Vercel 静态前端均已落地。
 - `agentcore/main.py` 已用 `BedrockAgentCoreApp` 注册 `main` 入口，`/invocations` 与 `/ping` 路由本地验证通过。
 - `agentcore/main.py` 默认 local 模式：`POST /invocations` 发送 `{}` 即可真实跑蜂群，不需要模型或 AWS。
@@ -110,7 +114,8 @@
 下一阶段：
 
 - 有模型 API 时把 `STRANDS_MODEL_PROVIDER` 切到 Ollama/OpenAI/Anthropic/Bedrock，录一条真实模型推理的 demo。
-- 把 `web/` 部署到 Vercel，并用公网后端地址替代 localhost。
+- 提供 AWS 凭据后跑通真实 Bedrock AgentCore 部署；当前 `scripts/deploy_agentcore.py` 会在有凭据时构建 arm64 镜像并创建 runtime，但本机无凭据不能凭空完成部署。
+- 把公网 Vercel 前端接到一个真正的公网 Python 后端，让评委不装环境也能上传 CSV 跑完整流程。
 
 已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。
 

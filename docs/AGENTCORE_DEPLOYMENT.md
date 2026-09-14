@@ -26,7 +26,7 @@
 ```text
 import agentcore
 agentcore.app.handlers -> {'main'}
-routes -> ['/invocations', '/ping', '/ws']
+routes -> ['/invocations', '/ping', '/business-flow', '/ws']
 ```
 
 本地 HTTP 烟测（无 AWS 凭据）：
@@ -38,6 +38,7 @@ POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
 
 默认请求不需要模型和 AWS。只有显式发送
 `{"mode":"agent","prompt":"..."}` 才会走 Strands 模型驱动路径。
+真实 CSV 业务流使用 `POST /business-flow`，本地也不依赖 AWS。
 
 前端 `web/` 可部署到 Vercel；后端已开启 CORS，浏览器可以直接调用公网或本地后端地址。
 
@@ -68,6 +69,7 @@ export AGENTCORE_ROLE_ARN=<role-arn>
 ```
 
 脚本会自动从 AWS STS 推导账号 ID，从当前 boto3 session 推导区域；也可以显式设置 `AWS_REGION` 和 `AWS_ACCOUNT_ID`。
+如果本机没有 `docker buildx`，脚本会回退到 `docker build --platform linux/arm64`。
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 

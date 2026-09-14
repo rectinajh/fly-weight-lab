@@ -75,6 +75,7 @@ That last number is load-bearing. Dieting leans on punishment (restriction), but
 The repository now contains a runnable end-to-end MVP, not just the idea:
 
 - **Genetic swarm** (`flylab/evolution.py`, `flylab/genotype.py`, `flylab/fitness.py`) evolves a personalized protocol.
+- **Process-stable fitness** (`flylab/fitness.py`) no longer depends on Python's salted string hash; the same genotype always receives the same simulated future. It optimizes a sustainable weight-loss band instead of rewarding “gentle but ineffective” protocols.
 - **Behavioral twin** (`flylab/twin.py`) predicts adherence, weight trajectory, and binge risk, honestly labeled as a behavioral model rather than a metabolic simulator.
 - **Real connectome grounding** (`flylab/connectome.py`, `data/mb_summary.json`) feeds the Janelia mushroom-body prior into binge-risk coupling.
 - **Decision surface** (`flylab/agent.py`) turns a champion protocol into one action plus one reason.
@@ -82,7 +83,9 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
 - **Strands agent loop** (`flylab/strands_agent.py`) exposes six narrow tools and runs a complete tool-call loop with an offline MockModel by default.
 - **Real model providers** — set `STRANDS_MODEL_PROVIDER=ollama` (local) or `bedrock`/`openai` when credentials are available.
-- **Behavioral calibration** (`flylab/calibration.py`) fits `adherence`, `binge_sensitivity`, and `metabolic_adaptation` from a user's CSV log instead of hand-set defaults.
+- **Behavioral calibration** (`flylab/calibration.py`) fits `binge_sensitivity` and `metabolic_adaptation` from a user's real weight log and supports raw Fitabase `weightLogInfo_merged.csv` exports.
+- **Real Fitbit data pipeline** (`scripts/ingest_fitbit_data.py`) downloads the CC-BY-4.0 Zenodo record `10.5281/zenodo.53894` and normalizes only the small per-user weight/activity CSVs committed under `data/real_users`.
+- **Real business flow** (`scripts/run_business_flow.py`, `flylab/business_flow.py`) runs upload → calibration → background ticks → one surfaced decision → real next-week outcome → durable feedback, using actual Fitbit rows rather than sample/mock logs.
 - **Safety guardrails** (`flylab/safety.py`) block unsafe calorie/protein/sleep/window values and force escalation for out-of-scope profiles.
 - **Durable user memory** (`flylab/memory.py`) persists sessions and human feedback.
 - **Offline evaluation** (`flylab/evaluation.py`, `scripts/run_evals.py`) measures plateau detection and opposite-user personalization.
@@ -91,7 +94,7 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Local-first default** — `POST /invocations` with `{}` runs the real swarm without a model or AWS credentials.
 - **Optional model-driven path** — `POST /invocations` with `{"mode":"agent","prompt":"..."}` calls the Strands agent.
 - **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
-- **Live demo UI** (`web/`) is a Vercel-ready static frontend that drives the local or hosted backend.
+- **Live demo UI** (`web/`) is a Vercel-ready static frontend that can upload a real CSV and drive the `/business-flow` endpoint.
 
 Public demo: [fly-weight-lab-demo.vercel.app](https://fly-weight-lab-demo.vercel.app)
 
@@ -100,6 +103,8 @@ Runnable demos:
 - `python examples/demo_plateau_breaker.py` — two users evolve opposite protocols.
 - `python examples/demo_connectome.py` — shows how real connectome grounding changes the recommendation.
 - `python examples/demo_agent.py` — 12-week background agent that stays quiet most weeks and surfaces only real decisions.
+- `python scripts/ingest_fitbit_data.py` — download and normalize the real Fitbit dataset.
+- `python scripts/run_business_flow.py --user-id 6962181067` — real-data business loop with durable feedback.
 - `python -m uvicorn agentcore.main:app --host 0.0.0.0 --port 8080` — local HTTP backend for the web demo.
 - `python scripts/run_evals.py` — offline evaluation scorecard.
 - `python scripts/calibrate_twin.py <data.csv>` — fit the twin from real logs.
@@ -116,6 +121,7 @@ Verification:
 - [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
 - [`docs/AGENTCORE_DEPLOYMENT.md`](./docs/AGENTCORE_DEPLOYMENT.md) — AWS Bedrock AgentCore deployment guide.
 - [`docs/LOCAL_DEMO.md`](./docs/LOCAL_DEMO.md) — no-AWS local backend and Vercel frontend guide.
+- [`docs/REAL_DATA.md`](./docs/REAL_DATA.md) — source, license, and normalization of the real Fitbit dataset.
 - [`docs/EVALUATION.md`](./docs/EVALUATION.md) — offline evaluation reference numbers.
 - [`docs/BUILDER_STORY.md`](./docs/BUILDER_STORY.md) — draft builder.aws bonus post.
 - [`assets/evolution_dashboard.png`](./assets/evolution_dashboard.png) — polished 2880x1600 evolution dashboard generated from real runs.
@@ -128,6 +134,9 @@ Verification:
 - [`Dockerfile`](./Dockerfile) — linux/arm64 container image for AgentCore Runtime.
 - [`web/`](./web) — Vercel-ready live demo frontend.
 - [`flylab/`](./flylab) — swarm, twin, calibration, safety, memory, evaluation, telemetry, Strands tools, and background agent loop.
+- [`data/real_users/`](./data/real_users) — small normalized real Fitbit inputs used by the business flow.
+- [`scripts/ingest_fitbit_data.py`](./scripts/ingest_fitbit_data.py) — reproducible download and normalization of the real dataset.
+- [`scripts/run_business_flow.py`](./scripts/run_business_flow.py) — real-data end-to-end business loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
 - [`tests/`](./tests) — automated verification for core and advanced paths.
 - [`scripts/build_connectome.py`](./scripts/build_connectome.py) — reproducible download/extract of the real mushroom body.

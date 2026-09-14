@@ -92,7 +92,23 @@ week 12: (quiet)
 
 **补一句**：状态已持久化，重启后不会丢当前方案和体重历史。
 
-## 镜头 5：技术可信度 + 边界（45 秒）
+## 镜头 5：真实 Fitbit 数据流（60 秒）
+
+**运行**：`python scripts/run_business_flow.py --user-id 6962181067`
+
+**画面**：
+
+- 展示 `data/real_users/6962181067_weight.csv` 和 activity CSV。
+- 展示 14 条真实体重、平均 12,640 步/天。
+- 展示校准出的 `binge_sensitivity=0.57`、`metabolic_adaptation=0.25`。
+- 展示周循环：week 1 只冒出一个决策，week 2/3 保持安静。
+- 展示 durable memory 中记录的真实下周体重变化，而不是假接受按钮。
+
+**口播**：
+
+「这里不是 mock 数据。我们下载并规范化了 Zenodo 上的真实 Fitbit 数据集，用真实体重轨迹校准行为孪生。agent 只在第一周冒出一个决策，接下来保持安静，最后把下一周真实体重结果写进记忆。」
+
+## 镜头 6：技术可信度 + 边界（45 秒）
 
 **画面**：三行卡片。
 
@@ -104,7 +120,7 @@ week 12: (quiet)
 
 「我们刻意不假装模拟人体代谢，因为那不诚实也不必要。我们拟合的是：这个人会不会做、做了会怎样。真实连接组只作为习惯和奖赏动态的结构先验。安全上，热量有下限，危险方案硬过滤，慢性病用户只得到『去问医生』。」
 
-## 镜头 6：一句话收尾（15 秒）
+## 镜头 7：一句话收尾（15 秒）
 
 > Your body runs one experiment. The flies ran ten thousand.
 
@@ -116,6 +132,8 @@ week 12: (quiet)
 
 - [ ] 三个命令都能从仓库根目录直接运行，local 模式无外部 API 依赖。
 - [ ] 测试通过：`python tests/test_evolution.py -v`
+- [ ] 真实数据命令可复现：`python scripts/ingest_fitbit_data.py` 与
+  `python scripts/run_business_flow.py --user-id 6962181067`
 - [ ] README 的 Real Connectome Grounding 数据与 `examples/demo_connectome.py` 一致。
 - [ ] 进化看板图：`assets/evolution_dashboard.png`
 - [ ] 架构图：`diagrams/fly_weight_lab_architecture.png`

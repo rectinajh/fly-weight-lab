@@ -8,6 +8,7 @@ import numpy as np
 
 from .connectome import load_params
 from .evolution import Swarm
+from .fitness import FitnessWeights, evaluate
 from .genotype import Fly
 from .plateau import detect_plateau
 from .twin import BehavioralTwin, UserProfile
@@ -89,14 +90,27 @@ def compare_two_users() -> dict:
     out = {}
     for profile in users:
         twin = BehavioralTwin(profile, connectome=params)
-        result = Swarm(twin, population_size=250, generations=25, seed=7).run()
+        result = Swarm(
+            twin,
+            population_size=250,
+            generations=25,
+            seed=7,
+            weights=FitnessWeights(),
+        ).run()
         fly = result.best_fly
+        _, metrics = evaluate(twin, fly, weights=FitnessWeights())
         out[profile.name] = {
             "calorie_target": fly.calorie_target,
             "late_night_rule": fly.late_night_rule,
             "refeed_schedule": fly.refeed_schedule,
             "sleep_target": fly.sleep_target,
             "meal_window": fly.meal_window,
+            "workout_freq": fly.workout_freq,
+            "workout_type": fly.workout_type,
+            "loss_kg": metrics["loss_kg"],
+            "adherence": metrics["adherence"],
+            "binge_risk": metrics["binge"],
+            "plateau_risk": metrics["plateau"],
             "fitness": round(result.best_score, 2),
         }
     return out
@@ -126,16 +140,28 @@ def champion_vs_aggressive_baseline() -> dict:
         refeed_schedule="none",
         step_target=10000,
     )
-    champion = Swarm(twin, population_size=250, generations=25, seed=7).run().best_fly
+    champion = Swarm(
+        twin,
+        population_size=250,
+        generations=25,
+        seed=7,
+        weights=FitnessWeights(),
+    ).run().best_fly
+
+    _, aggressive_metrics = evaluate(twin, aggressive, weights=FitnessWeights())
+    _, champion_metrics = evaluate(twin, champion, weights=FitnessWeights())
     return {
         "aggressive": {
-            "adherence": round(twin.adherence(aggressive), 3),
-            "binge_risk": round(twin.binge_risk(aggressive), 3),
-            "loss_kg": round(float(twin.simulate(aggressive, 12)[0] - twin.simulate(aggressive, 12)[-1]), 2),
+            "adherence": aggressive_metrics["adherence"],
+            "binge_risk": aggressive_metrics["binge"],
+            "simulated_weight_change_kg": aggressive_metrics["loss_kg"],
         },
         "champion": {
-            "adherence": round(twin.adherence(champion), 3),
-            "binge_risk": round(twin.binge_risk(champion), 3),
-            "loss_kg": round(float(twin.simulate(champion, 12)[0] - twin.simulate(champion, 12)[-1]), 2),
+            "adherence": champion_metrics["adherence"],
+            "binge_risk": champion_metrics["binge"],
+            "simulated_weight_change_kg": champion_metrics["loss_kg"],
+            "calorie_target": champion.calorie_target,
+            "late_night_rule": champion.late_night_rule,
+            "refeed_schedule": champion.refeed_schedule,
         },
     }
