@@ -97,6 +97,7 @@ Verification:
 - [`README.md`](./README.md) — this document.
 - [`docs/PRD.md`](./docs/PRD.md) — product requirements.
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
+- [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
 - [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
 - [`tests/`](./tests) — automated verification.

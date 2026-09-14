@@ -104,6 +104,8 @@
 - 真正安装并验证 `strands-agents`，补充 Bedrock/AgentCore 部署配置。
 - 将 demo 输出固化成正式分镜和进化看板视觉。
 
+已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。
+
 ## 11. 待验证假设
 
 1. 用户愿意持续记录至少 2 周，数据量足以拟合一个够用的行为孪生。
