@@ -276,7 +276,7 @@ consistency.
 | AgentCore Runtime | deployed, version 4, `READY` in `us-east-1` |
 | Data-plane invocation | `200` with real swarm output |
 | Live demo | runs the real flow with no local backend |
-| Test suite | 14 tests covering genotype, swarm, connectome, background loop, calibration, safety, memory, evals, Strands loop |
+| Test suite | 15 tests covering genotype, swarm, connectome, background loop, calibration, safety, memory, evals, Strands loop, and that two preloaded users diverge |
 | GitHub Actions | green on `main` |
 | Vercel production deploy | green on `main` |
 

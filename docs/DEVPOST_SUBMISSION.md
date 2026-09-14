@@ -107,10 +107,11 @@ trails, a sonar-style radar where best fitness spirals inward toward the
 champion, and a live wiring diagram of the connectome. Authentication is Vercel ↔
 AWS OIDC federation, so there are no long-lived AWS keys anywhere.
 
-**Verification.** 14 unit tests cover the genotype, the swarm, connectome
+**Verification.** 15 unit tests cover the genotype, the swarm, connectome
 grounding, the background loop's quietness, calibration, safety, memory, offline
-evaluation, and the Strands tool-call loop. GitHub Actions runs them on every
-push, and the Vercel production deploy is green.
+evaluation, the Strands tool-call loop, and the requirement that the two
+preloaded users actually diverge. GitHub Actions runs them on every push, and the
+Vercel production deploy is green.
 
 ## Challenges we ran into
 
@@ -175,7 +176,7 @@ questioning, not weaker.
 - **Honesty and safety by design.** Hard calorie floors, filtered dangerous
   protocols, and escalation to a clinician instead of a plan when a profile is
   out of scope. The agent never diagnoses and never prescribes.
-- **Reproducibility.** 14 tests, deterministic scoring, green CI, and a green
+- **Reproducibility.** 15 tests, deterministic scoring, green CI, and a green
   production deploy on every push.
 
 ## What we learned
