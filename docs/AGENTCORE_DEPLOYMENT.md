@@ -119,7 +119,7 @@ OIDC 侧由 [scripts/setup_vercel_oidc_role.py](../scripts/setup_vercel_oidc_rol
 
 - IAM OIDC provider：`oidc.vercel.com/rectinajhs-projects`
 - Audience：`https://vercel.com/rectinajhs-projects`
-- Trust 限定：`owner:rectinajhs-projects:project:web:environment:production`
+- Trust 限定（production）：`project:fly-weight-lab` 与 `project:web` 两个项目
 - 权限仅 `bedrock-agentcore:InvokeAgentRuntime` 和 `bedrock-agentcore:GetAgentRuntime`，资源限定到当前 runtime ARN 及其 `runtime-endpoint/*` 子资源。
 
 ### GitHub 推送自动部署

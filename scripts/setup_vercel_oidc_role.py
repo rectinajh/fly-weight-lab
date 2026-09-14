@@ -1,7 +1,7 @@
 """Create the AWS OIDC provider and role that lets Vercel assume AWS access.
 
 This replaces long-lived access keys with short-lived web-identity credentials.
-The role is scoped to the ``web`` Vercel project in the production environment.
+The role is scoped to specific Vercel projects in the production environment.
 
 Run from the repository root:
     AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/setup_vercel_oidc_role.py
@@ -21,7 +21,13 @@ from botocore.exceptions import ClientError
 ACCOUNT_ID = os.environ.get("AWS_ACCOUNT_ID", "032529260721")
 REGION = os.environ.get("AWS_REGION", "us-east-1")
 TEAM_SLUG = os.environ.get("VERCEL_TEAM_SLUG", "rectinajhs-projects")
-PROJECT_NAME = os.environ.get("VERCEL_PROJECT_NAME", "web")
+# Projects allowed to assume the role. ``fly-weight-lab`` is the Git-connected
+# project that auto-deploys on push; ``web`` is the manually deployed project.
+PROJECT_NAMES = [
+    name.strip()
+    for name in os.environ.get("VERCEL_PROJECT_NAMES", "fly-weight-lab,web").split(",")
+    if name.strip()
+]
 ROLE_NAME = "flyweight-vercel-oidc-role"
 POLICY_NAME = "flyweight-vercel-oidc-policy"
 RUNTIME_ARN = (
@@ -34,9 +40,10 @@ AUDIENCE = f"https://vercel.com/{TEAM_SLUG}"
 PROVIDER_ARN = (
     f"arn:aws:iam::{ACCOUNT_ID}:oidc-provider/oidc.vercel.com/{TEAM_SLUG}"
 )
-SUBJECT = (
-    f"owner:{TEAM_SLUG}:project:{PROJECT_NAME}:environment:production"
-)
+SUBJECTS = [
+    f"owner:{TEAM_SLUG}:project:{name}:environment:production"
+    for name in PROJECT_NAMES
+]
 
 
 def trust_policy() -> str:
@@ -49,10 +56,12 @@ def trust_policy() -> str:
                     "Principal": {"Federated": PROVIDER_ARN},
                     "Action": "sts:AssumeRoleWithWebIdentity",
                     "Condition": {
+                        "StringLike": {
+                            f"oidc.vercel.com/{TEAM_SLUG}:sub": SUBJECTS,
+                        },
                         "StringEquals": {
-                            f"oidc.vercel.com/{TEAM_SLUG}:sub": SUBJECT,
                             f"oidc.vercel.com/{TEAM_SLUG}:aud": AUDIENCE,
-                        }
+                        },
                     },
                 }
             ],
@@ -110,6 +119,11 @@ def ensure_role(iam) -> str:
     try:
         role = iam.get_role(RoleName=ROLE_NAME)["Role"]
         print(f"Reusing role: {role['Arn']}")
+        iam.update_assume_role_policy(
+            RoleName=ROLE_NAME,
+            PolicyDocument=trust_policy(),
+        )
+        print("Updated trust policy to match the allowed projects")
         return role["Arn"]
     except ClientError as exc:
         if exc.response["Error"]["Code"] != "NoSuchEntity":
