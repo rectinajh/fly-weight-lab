@@ -60,13 +60,24 @@ Your body runs one experiment. The flies ran ten thousand.
 
 **Everyday Agents** — daily life, money, health, errands, family. Fly Weight-Lab takes the busywork, and the emotional weight, out of one of the most common human struggles.
 
+## Real Connectome Grounding
+
+Fly Weight-Lab does not treat the fruit fly as a metaphor alone. The behavioral twin is grounded in the real *Drosophila* mushroom body from the Janelia MaleCNS connectome ([male-cns.janelia.org](https://male-cns.janelia.org/)):
+
+- 4,064 Kenyon cells (context), 340 dopaminergic neurons (reward/punishment), 97 MBONs (decision).
+- 631 Kenyon cells converge on each MBON: context is massively compressed before a single behavioral decision.
+- Reward (PAM) outweighs punishment (PPL) ~2.56:1 in real MBON modulation.
+
+That last number is load-bearing. Dieting leans on punishment (restriction), but the real wiring says reward is stronger, so restriction produces disproportionate craving pressure. The grounded twin therefore rates aggressive diets as riskier and recommends gentler, sustainable protocols.
+
 ## Repository Layout
 
 - [`README.md`](./README.md) — this document.
 - [`docs/PRD.md`](./docs/PRD.md) — product requirements.
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
-
-Implementation code will land here as the build progresses.
+- [`flylab/`](./flylab) — the genetic swarm, behavioral twin, and connectome grounding.
+- [`examples/`](./examples) — runnable demos (plateau breaker + connectome).
+- [`scripts/build_connectome.py`](./scripts/build_connectome.py) — reproducible download/extract of the real mushroom body.
 
 ## License
 

@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from flylab.evolution import Swarm
+from flylab.connectome import load_params
 from flylab.genotype import CALORIE_FLOOR, Fly
 from flylab.twin import BehavioralTwin, UserProfile
 
@@ -43,6 +44,15 @@ class TestEvolution(unittest.TestCase):
         first_best = result.history[0][1]
         last_best = result.history[-1][1]
         self.assertGreater(last_best, first_best)
+
+
+class TestConnectome(unittest.TestCase):
+    def test_real_params_load(self):
+        params = load_params()
+        self.assertEqual(params.n_kenyon, 4064)
+        self.assertEqual(params.n_mbon, 97)
+        self.assertGreater(params.reward_punishment_ratio, 1.0)
+        self.assertLessEqual(params.context_recurrence_ratio, 1.0)
 
 
 if __name__ == "__main__":

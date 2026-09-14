@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .connectome import ConnectomeParams
 from .genotype import Fly
 
 KCAL_PER_KG = 7700.0
@@ -30,8 +31,9 @@ class UserProfile:
 
 
 class BehavioralTwin:
-    def __init__(self, profile: UserProfile):
+    def __init__(self, profile: UserProfile, connectome: ConnectomeParams | None = None):
         self.profile = profile
+        self.connectome = connectome
 
     def adherence(self, fly: Fly) -> float:
         p = self.profile
@@ -52,9 +54,13 @@ class BehavioralTwin:
     def binge_risk(self, fly: Fly) -> float:
         p = self.profile
         deficit_ratio = max(0.0, (p.maintenance_kcal - fly.calorie_target) / p.maintenance_kcal)
+        # Real MB wiring: PAM (reward) -> MBON outweighs PPL (punishment) -> MBON
+        # by ~2.56x. Dieting relies on punishment (restriction), so the circuit
+        # is wired to answer restriction with disproportionate craving pressure.
+        reward_dominance = self.connectome.reward_punishment_ratio if self.connectome else 1.0
         risk = (
             p.binge_sensitivity
-            + 0.30 * deficit_ratio
+            + 0.30 * reward_dominance * deficit_ratio
             + 0.10 * max(0.0, (12 - fly.meal_window) / 12)
         )
         if fly.late_night_rule:

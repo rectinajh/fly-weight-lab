@@ -1,0 +1,35 @@
+{
+  "source": "Janelia MaleCNS v1.0 mushroom body (male-cns.janelia.org)",
+  "neurons": {
+    "Kenyon_Cell": 4064,
+    "DAN": 340,
+    "MBON": 97
+  },
+  "mb_edges": 998478,
+  "mb_synaptic_weight": 2222611,
+  "kc_to_mbon": {
+    "edges": 61210,
+    "mean_kc_per_mbon": 631.0,
+    "mean_weight_per_mbon": 4779.8
+  },
+  "dan_to_mbon": {
+    "edges": 3160,
+    "mean_dan_per_mbon": 32.6,
+    "mean_weight_per_mbon": 409.4
+  },
+  "dan_family_to_mbon_weight": {
+    "PAM": 28546,
+    "PPL": 11165
+  },
+  "class_matrix_weight": {
+    "DAN->DAN": 9677,
+    "DAN->Kenyon_Cell": 225127,
+    "DAN->MBON": 39711,
+    "Kenyon_Cell->DAN": 281862,
+    "Kenyon_Cell->Kenyon_Cell": 1153845,
+    "Kenyon_Cell->MBON": 463640,
+    "MBON->DAN": 11309,
+    "MBON->Kenyon_Cell": 11181,
+    "MBON->MBON": 26259
+  }
+}

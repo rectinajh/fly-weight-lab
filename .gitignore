@@ -7,10 +7,10 @@ venv/
 .env.*
 !.env.example
 
-# Data (never commit user data)
-data/
-*.csv
-*.jsonl
+# Raw connectome downloads stay local; commit only the small extracted artifacts
+data/*
+!data/mb_neurons.csv
+!data/mb_summary.json
 
 # OS
 .DS_Store
