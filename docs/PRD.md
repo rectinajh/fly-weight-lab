@@ -99,13 +99,14 @@
 - `WeightLossAgent` 状态持久化：当前方案、体重历史、平台期记忆可保存为 JSON 并恢复，重启不丢实验。
 - `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 可成功构造 `strands.Agent`；`run_swarm` / `is_plateau` 已暴露成 Strands 工具。
 - `agentcore/main.py` 已用 `BedrockAgentCoreApp` 注册 `main` 入口，`/invocations` 与 `/ping` 路由本地验证通过。
-- `agentcore/main.py` 支持 `{"mode":"local"}`，不需要 Bedrock 凭据也能在 HTTP 服务里真实跑蜂群。
+- `agentcore/main.py` 默认 local 模式：`POST /invocations` 发送 `{}` 即可真实跑蜂群，不需要模型或 AWS。
+- `{"mode":"agent","prompt":"..."}` 保留为可选模型驱动路径。
 - 已补齐 `Dockerfile` 和 `scripts/deploy_agentcore.py` 一键部署脚本。
 - 已生成正式进化看板图与架构图。
 
 下一阶段：
 
-- 使用真实 AWS 凭据完成一次 AgentCore 部署并验证模型调用。
+- 可选用真实 AWS 凭据完成 AgentCore 部署，或改用 OpenAI/Anthropic/Ollama 等其他模型 provider。
 
 已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。
 

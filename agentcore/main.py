@@ -3,11 +3,11 @@
 Wraps the Strands agent from ``flylab.strands_agent`` in a Bedrock AgentCore
 app. The runtime exposes ``POST /invocations`` and ``GET /ping`` automatically.
 
-Expected invocation payload:
-    {"prompt": "Detect a plateau and surface the one decision for this user."}
+Default invocation payload (local, no model or AWS required):
+    {}
 
-Local verification payload (no Bedrock credentials required):
-    {"mode": "local"}
+Optional Bedrock-driven payload:
+    {"mode": "agent", "prompt": "Detect a plateau and surface the one decision for this user."}
 """
 
 from __future__ import annotations
@@ -74,15 +74,19 @@ def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
 
 @app.entrypoint
 async def main(payload: dict[str, Any]) -> dict[str, Any]:
-    """Run the fruit-fly agent and return a serializable result."""
-    if payload.get("mode") == "local":
-        return _run_local_swarm(payload)
+    """Run the fruit-fly agent and return a serializable result.
 
-    prompt = payload.get("prompt")
-    if not isinstance(prompt, str) or not prompt.strip():
-        return {"error": "payload.prompt must be a non-empty string"}
+    Local mode is the default because the hackathon demo should work without
+    AWS credentials. Model-driven mode is opt-in.
+    """
+    if payload.get("mode") == "agent":
+        prompt = payload.get("prompt")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return {"error": "payload.prompt must be a non-empty string"}
 
-    result = await _get_agent().invoke_async(prompt)
-    if hasattr(result, "to_dict"):
-        return {"result": result.to_dict()}
-    return {"result": str(result)}
+        result = await _get_agent().invoke_async(prompt)
+        if hasattr(result, "to_dict"):
+            return {"result": result.to_dict()}
+        return {"result": str(result)}
+
+    return _run_local_swarm(payload)

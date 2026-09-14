@@ -31,8 +31,11 @@ routes -> ['/invocations', '/ping', '/ws']
 
 ```text
 GET  /ping -> 200 {"status":"Healthy", ...}
-POST /invocations {"mode":"local"} -> 200 {"mode":"local","champion":{...},...}
+POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
 ```
+
+默认请求不需要模型和 AWS。只有显式发送
+`{"mode":"agent","prompt":"..."}` 才会走 Strands 模型驱动路径。
 
 ## 3. 前置条件
 

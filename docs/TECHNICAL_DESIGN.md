@@ -80,8 +80,8 @@
 AgentCore 部署入口：
 
 - `agentcore/main.py` 使用 `BedrockAgentCoreApp` 包装 Strands agent。
-- `@app.entrypoint` 接收 `{"prompt": "..."}`，调用 `agent.invoke_async(prompt)` 并返回可序列化结果。
-- 额外支持 `{"mode":"local"}`，直接跑 `Swarm`，供无 Bedrock 凭据的部署烟测。
+- `@app.entrypoint` 默认走 local：空 `{}` 请求直接跑 `Swarm`，返回冠军方案、fitness、坚持度和暴食风险。
+- 显式 `{"mode":"agent","prompt":"..."}` 才调用 `agent.invoke_async(prompt)`。
 - AgentCore Runtime 自动提供 `POST /invocations` 与 `GET /ping`；本地已确认 routes 与 handler 注册成功。
 - `Dockerfile` 构建 linux/arm64 镜像；`scripts/deploy_agentcore.py` 完成 ECR 推送与 `create_agent_runtime`。
 - 完整部署步骤见 `docs/AGENTCORE_DEPLOYMENT.md`。

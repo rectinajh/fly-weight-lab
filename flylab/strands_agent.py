@@ -1,12 +1,13 @@
-"""Strands Agents SDK integration (optional).
+"""Strands Agents SDK integration (optional model-driven path).
 
 Exposes Fly Weight-Lab functions as Strands tools so a model-driven agent can
-drive the swarm. Requires AWS credentials for the default Bedrock provider:
+drive the swarm. The SDK itself runs locally; only the default Bedrock model
+provider needs AWS credentials. Pass ``model=...`` to use another provider.
 
     pip install strands-agents
     from flylab.strands_agent import build_strands_agent
     agent = build_strands_agent()
-    agent("Detect a plateau and surface the one decision for this user.")
+    # Optional model-driven run; the repo's default local path does not use this.
 """
 
 from __future__ import annotations

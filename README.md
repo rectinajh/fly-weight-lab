@@ -82,8 +82,9 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
 - **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
 - **Verified SDK path** — `pip install -r requirements-strands.txt`, then `build_strands_agent()` constructs a `strands.Agent` without needing live AWS calls.
-- **AgentCore runtime entrypoint** (`agentcore/main.py`) wraps the Strands agent in `BedrockAgentCoreApp`; `/invocations` and `/ping` routes register successfully.
-- **Local verification path** — `POST /invocations` with `{"mode":"local"}` runs the real swarm without Bedrock credentials.
+- **AgentCore runtime entrypoint** (`agentcore/main.py`) wraps the project in `BedrockAgentCoreApp`; `/invocations` and `/ping` routes register successfully.
+- **Local-first default** — `POST /invocations` with `{}` runs the real swarm without a model or AWS credentials.
+- **Optional model-driven path** — `POST /invocations` with `{"mode":"agent","prompt":"..."}` calls the Strands agent.
 - **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
 
 Runnable demos:

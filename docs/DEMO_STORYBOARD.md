@@ -114,7 +114,7 @@ week 12: (quiet)
 
 ## Demo 检查清单
 
-- [ ] 三个命令都能从仓库根目录直接运行，无外部 API 依赖。
+- [ ] 三个命令都能从仓库根目录直接运行，local 模式无外部 API 依赖。
 - [ ] 测试通过：`python tests/test_evolution.py -v`
 - [ ] README 的 Real Connectome Grounding 数据与 `examples/demo_connectome.py` 一致。
 - [ ] 进化看板图：`assets/evolution_dashboard.png`
