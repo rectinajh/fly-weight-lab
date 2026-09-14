@@ -115,6 +115,7 @@ Verification:
 - [`docs/AGENTCORE_DEPLOYMENT.md`](./docs/AGENTCORE_DEPLOYMENT.md) — AWS Bedrock AgentCore deployment guide.
 - [`docs/LOCAL_DEMO.md`](./docs/LOCAL_DEMO.md) — no-AWS local backend and Vercel frontend guide.
 - [`docs/EVALUATION.md`](./docs/EVALUATION.md) — offline evaluation reference numbers.
+- [`docs/BUILDER_STORY.md`](./docs/BUILDER_STORY.md) — draft builder.aws bonus post.
 - [`assets/evolution_dashboard.png`](./assets/evolution_dashboard.png) — polished 2880x1600 evolution dashboard generated from real runs.
 - [`diagrams/fly_weight_lab_architecture.svg`](./diagrams/fly_weight_lab_architecture.svg) — editable architecture diagram.
 - [`diagrams/fly_weight_lab_architecture.png`](./diagrams/fly_weight_lab_architecture.png) — architecture diagram PNG for submissions.
