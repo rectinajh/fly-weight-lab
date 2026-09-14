@@ -24,9 +24,10 @@ as a local script. AgentCore gives us:
   Fitbit users baked into the image.
 - Optional model mode: `{"mode":"agent","prompt":"..."}` runs the Strands
   tool-call loop (deterministic MockModel by default).
-- `flylab/strands_agent.py` — six narrow Strands tools: `get_user_context`,
-  `detect_plateau`, `simulate_candidate`, `evolve_champion`, `surface_decision`,
-  `record_feedback`.
+- `flylab/strands_agent.py` — Strands tools: `get_user_context`,
+  `detect_plateau`, `simulate_candidate`, `evolve_champion`,
+  `run_background_loop`, `emit_decision`, `record_feedback`.
+  Live `mode=demo` runs this loop.
 - `requirements-strands.txt` — `strands-agents>=1.55`.
 - `requirements-agentcore.txt` — `bedrock-agentcore>=1.23`.
 - `Dockerfile` — `linux/arm64` container image on port 8080.

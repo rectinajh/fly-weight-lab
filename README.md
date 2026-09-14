@@ -150,7 +150,7 @@ habit and reward dynamics — not a claim that a human brain equals a fly brain.
 | Behavioral twin + calibration | implemented, fits from real CSV logs |
 | Background agent loop | implemented with JSON state persistence |
 | Real-data business flow | implemented over real Fitbit rows |
-| Strands Agents SDK tools | six narrow tools, offline MockModel by default |
+| Strands Agents SDK tools | seven tools; live demo runs the Strands loop |
 | Bedrock AgentCore Runtime | **deployed, `READY`, invoked successfully** |
 | Vercel frontend + edge proxy | live, animated, English, OIDC-authenticated |
 | Real Fitbit users preloaded | 2 users baked into the container image |
@@ -195,7 +195,7 @@ Runnable demos:
 | `python scripts/run_business_flow.py --user-id 6962181067` | real-data business loop |
 | `python scripts/run_evals.py` | offline evaluation scorecard |
 | `python scripts/calibrate_twin.py <data.csv>` | fit the twin from real logs |
-| `python -m unittest discover -s tests -v` | full test suite (14 tests) |
+| `python -m unittest discover -s tests -v` | full test suite (15 tests) |
 
 ## Repository layout
 

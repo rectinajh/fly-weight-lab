@@ -13,7 +13,7 @@ from flylab.calibration import fit_profile
 from flylab.evaluation import evaluate_plateau_detection
 from flylab.genotype import Fly
 from flylab.memory import UserMemoryStore
-from flylab.safety import evaluate_protocol, safe_champion
+from flylab.safety import evaluate_protocol, safe_calorie_floor, safe_champion
 from flylab.strands_agent import build_model, build_strands_agent, build_tools
 from flylab.twin import UserProfile
 
@@ -52,7 +52,10 @@ class TestSafety(unittest.TestCase):
         self.assertFalse(report.safe)
         repaired = safe_champion(unsafe, profile)
         self.assertTrue(evaluate_protocol(repaired, profile).safe)
-        self.assertGreaterEqual(repaired.calorie_target, 1200)
+        self.assertGreaterEqual(
+            repaired.calorie_target, safe_calorie_floor(88.0, profile.maintenance_kcal)
+        )
+        self.assertGreater(safe_calorie_floor(61.5, 1845.0), 1329)
 
 
 class TestEvaluation(unittest.TestCase):
@@ -76,8 +79,9 @@ class TestStrandsLocalAgent(unittest.TestCase):
     def test_tools_are_narrow(self):
         names = [getattr(tool, "__name__", None) for tool in build_tools()]
         self.assertIn("evolve_champion", names)
-        self.assertIn("surface_decision", names)
-        self.assertGreaterEqual(len(names), 4)
+        self.assertIn("emit_decision", names)
+        self.assertIn("run_background_loop", names)
+        self.assertGreaterEqual(len(names), 6)
 
     def test_mock_model_agent_completes(self):
         self.assertIsNotNone(build_model("mock"))

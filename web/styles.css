@@ -288,7 +288,8 @@ button {
 }
 .ghost:hover { border-color: var(--border-strong); background: rgba(14, 28, 48, 0.85); }
 
-.ghost.small { padding: 9px 12px; font-size: 13px; }
+.ghost.small,
+.primary.small { padding: 9px 12px; font-size: 13px; }
 
 .advanced { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
 .advanced summary { cursor: pointer; color: var(--muted); font-size: 13px; }
@@ -408,6 +409,8 @@ button {
 .farm-label { width: 34px; color: var(--dim); font-size: 10px; text-align: right; }
 .farm-cells { display: flex; flex: 1; gap: 1px; height: 7px; border-radius: 3px; overflow: hidden; }
 .farm-cell { flex: 1; min-width: 1px; }
+.farm-cell.elite { background: var(--green); }
+.farm-cell.parent { background: rgba(53, 208, 127, 0.42); }
 .farm-cell.alive { background: var(--green); }
 .farm-cell.dead { background: rgba(255, 92, 122, 0.75); }
 
@@ -433,6 +436,7 @@ button {
 .legend { display: flex; gap: 14px; margin-top: 10px; color: var(--muted); font-size: 12px; }
 .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
 .legend .q::before { background: var(--green); }
+.legend .p::before { background: rgba(53, 208, 127, 0.42); }
 .legend .s::before { background: var(--yellow); }
 
 .decision-box {
@@ -444,6 +448,22 @@ button {
 .decision-box .headline { font-size: 18px; font-weight: 700; color: var(--yellow); margin: 0 0 8px; }
 .decision-box .action { font-size: 15px; color: var(--text); }
 .decision-box .reason { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+.decision-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+ol.trace {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+ol.trace b { color: var(--cyan); font-weight: 600; }
 
 .champion-grid {
   display: grid;

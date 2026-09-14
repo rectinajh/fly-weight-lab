@@ -11,6 +11,7 @@ from .evolution import Swarm
 from .fitness import FitnessWeights, evaluate
 from .genotype import Fly
 from .plateau import detect_plateau
+from .safety import safe_calorie_floor
 from .twin import BehavioralTwin, UserProfile
 
 
@@ -96,6 +97,7 @@ def compare_two_users() -> dict:
             generations=25,
             seed=7,
             weights=FitnessWeights(),
+            calorie_min=safe_calorie_floor(profile.start_weight_kg, profile.maintenance_kcal),
         ).run()
         fly = result.best_fly
         _, metrics = evaluate(twin, fly, weights=FitnessWeights())
@@ -146,6 +148,7 @@ def champion_vs_aggressive_baseline() -> dict:
         generations=25,
         seed=7,
         weights=FitnessWeights(),
+        calorie_min=safe_calorie_floor(profile.start_weight_kg, profile.maintenance_kcal),
     ).run().best_fly
 
     _, aggressive_metrics = evaluate(twin, aggressive, weights=FitnessWeights())

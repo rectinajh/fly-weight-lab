@@ -13,9 +13,9 @@ from pathlib import Path
 
 from .agent import Decision, surface_decision
 from .connectome import ConnectomeParams, load_params
-from .evolution import Swarm
+from .evolution import Swarm, unpack_history_row
 from .genotype import Fly
-from .safety import evaluate_protocol, safe_champion
+from .safety import evaluate_protocol, safe_calorie_floor, safe_champion
 from .twin import BehavioralTwin, UserProfile
 
 
@@ -66,11 +66,11 @@ class WeightLossAgent:
     @staticmethod
     def _fingerprint(fly: Fly) -> tuple:
         return (
-            fly.calorie_target,
+            int(round(fly.calorie_target / 50.0) * 50),
             fly.late_night_rule,
             fly.refeed_schedule,
             fly.meal_window,
-            round(fly.sleep_target, 1),
+            round(fly.sleep_target, 0),
         )
 
     def _run_swarm(self) -> tuple[Fly, float, list]:
@@ -79,6 +79,9 @@ class WeightLossAgent:
             population_size=self.config.population_size,
             generations=self.config.generations,
             seed=self.config.seed,
+            calorie_min=safe_calorie_floor(
+                self.profile.start_weight_kg, self.profile.maintenance_kcal
+            ),
         ).run()
         self.last_evolution = result.history
         return result.best_fly, result.best_score, result.history
@@ -95,7 +98,11 @@ class WeightLossAgent:
                 self.twin.profile.metabolic_adaptation + self.config.adapt_on_plateau,
             )
 
-        champion, _, _ = self._run_swarm()
+        champion, _, _ = (
+            self._run_swarm()
+            if self.last_champion is None or (plateau and not self.prev_plateau)
+            else (self.last_champion, 0.0, self.last_evolution or [])
+        )
         safety = evaluate_protocol(champion, self.profile)
         if not safety.safe:
             champion = safe_champion(champion, self.profile)
@@ -147,10 +154,8 @@ class WeightLossAgent:
             return {"generations": []}
 
         generations = []
-        for generation, best, mean, scores in self.last_evolution:
-            ordered = sorted(scores)
-            median = ordered[len(ordered) // 2]
-            farm = "".join("1" if score >= median else "0" for score in scores)
+        for row in self.last_evolution:
+            generation, best, mean, _scores, farm = unpack_history_row(row)
             generations.append(
                 {
                     "generation": generation,

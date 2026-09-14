@@ -41,17 +41,19 @@ diving behind it.
 - The sonar convergence radar: best fitness spirals inward toward the champion
   while the sweep rotates.
 - The best-versus-mean line chart converging across generations.
-- The population farm: each row is one generation, green cells survive and red
-  cells are culled.
-- The champion card: calories, macros, eating window, sleep, steps, training,
-  refeed, late-night snack.
+- The population farm: elite cells stay green, parent-pool cells are dim green,
+  culled cells go red. This is actual elitism, not a 50/50 median split.
+- The Strands tool-call list: get_user_context → detect_plateau →
+  simulate_candidate → run_background_loop → emit_decision → record_feedback.
+- The champion card and the Lock in / Skip buttons.
 
 **Voice-over:**
 
 > Every fly is a candidate protocol. We run thousands of simulated futures
 > through your behavioral twin. Weak protocols go red and die. Strong ones breed,
 > cross over, and mutate. Only one champion survives. And note this: two users
-> with the same goal evolve completely opposite protocols.
+> with the same goal evolve opposite protocols — one keeps a late-night snack
+> and a weekly refeed, the other does not.
 
 **Key moment:** the two-user comparison card at the bottom of the dashboard.
 
@@ -96,17 +98,19 @@ calories" to "raise calories and keep a planned late-night snack".
 **Run:** press **Launch background agent** and scroll to the background-agent
 timeline.
 
-**Screen:** the weekly timeline, where quiet weeks are small green dots and the
-weeks that surfaced a decision are yellow stars.
+**Screen:** the weekly timeline with 12 ticks, quiet weeks as small green dots
+and the weeks that surfaced a decision as yellow stars. Then click
+**Lock in this habit**.
 
 **Voice-over:**
 
-> This is the shot we want judges to remember. Across the window the agent only
-> comes up a few times; every other week it is completely silent. It reruns the
-> swarm every week, but it does not interrupt you. It only surfaces when a new
+> This is the shot we want judges to remember. Across twelve weeks the agent
+> only comes up a few times; every other week it is completely silent. It reruns
+> in the background, but it does not interrupt you. It only surfaces when a new
 > plateau appears or the champion protocol genuinely changed. That is the
 > definition of an agent for humans: autonomous, and only surfaces on a real
-> decision.
+> decision. Strands composed six narrow tools to get there — you can read the
+> tool trace on the page.
 
 **Add:** state is persisted, so a restart does not lose the current protocol or
 the weight history.
@@ -189,7 +193,7 @@ the data plane.
       timeline, the champion, the decision, and the two-user comparison.
 - [ ] `python examples/demo_connectome.py` output matches the numbers in this
       document and in the README.
-- [ ] `python -m unittest discover -s tests -v` passes (14 tests).
+- [ ] `python -m unittest discover -s tests -v` passes (15 tests).
 - [ ] `python scripts/run_business_flow.py --user-id 6962181067` reproduces the
       real-data flow locally.
 - [ ] Evolution dashboard image: `assets/evolution_dashboard.png`.

@@ -30,8 +30,8 @@ Verified through the Bedrock AgentCore data plane:
 POST /invocations  {}
   -> 200 {"mode":"local","champion":{...},"fitness":53.872,"adherence":0.607,"safety":{...}}
 
-POST /invocations  {"mode":"demo","user_id":"6962181067","population_size":250,"generations":25}
-  -> 200 with real calibration, evolution history, champion, surfaced decision, feedback
+POST /invocations  {"mode":"demo","user_id":"6962181067","population_size":180,"generations":18}
+  -> 200 with Strands tool trace, 12-week quiet loop, champion, decision, feedback
 
 POST /invocations  {"mode":"agent","prompt":"..."}
   -> 200 with a completed Strands tool-call loop
@@ -101,7 +101,7 @@ pressure rather than being a hand-tuned constant.
 
 | Check | Status |
 |---|---|
-| `python -m unittest discover -s tests -v` | 14 tests pass |
+| `python -m unittest discover -s tests -v` | 15 tests pass |
 | GitHub Actions `ci` workflow | passing on `main` |
 | Vercel production deploy check | passing on `main` |
 | Live `/api/ping` on both domains | `Healthy` |
@@ -129,11 +129,13 @@ AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/setup_vercel_oidc_role.
 
 - The behavioral twin is a transparent parametric model, not a learned
   production model. It is honest about being a behavior model rather than a
-  metabolic simulator.
-- The two preloaded users have short histories (1–3 weekly checkpoints), so the
-  background-agent timeline is short in the live demo.
+  metabolic simulator. Adherence is a neutral prior when the Fitbit export has
+  no adherence column.
+- The two preloaded users have short observed histories (1–3 weekly
+  checkpoints). The live demo therefore fits from those rows, then runs a
+  12-week quiet loop on the twin.
 - Preview deployments are not part of the OIDC trust policy; only production
   deployments can assume the AWS role.
-- Model-driven mode defaults to a deterministic offline MockModel. Point
-  `STRANDS_MODEL_PROVIDER` at Ollama, OpenAI, Anthropic, or Bedrock to use a real
-  model.
+- Demo mode uses a deterministic Strands `FlowModel` that actually calls the
+  six tools. Point `STRANDS_MODEL_PROVIDER` at Bedrock, Ollama, OpenAI, or
+  Anthropic to let a live model choose the same tools.

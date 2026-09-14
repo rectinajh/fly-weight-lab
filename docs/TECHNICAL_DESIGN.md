@@ -119,11 +119,11 @@ space for the best solution for this specific person.
 
 ### 2.5 Strands Agents SDK bridge
 
-- `flylab/strands_agent.py` exposes six narrow tools instead of one god
+- `flylab/strands_agent.py` exposes narrow tools instead of one god
   function: `get_user_context`, `detect_plateau`, `simulate_candidate`,
-  `evolve_champion`, `surface_decision`, `record_feedback`.
-- Default `STRANDS_MODEL_PROVIDER=mock` uses a deterministic `MockModel` that
-  runs a complete tool-call loop with no API key.
+  `evolve_champion`, `run_background_loop`, `emit_decision`, `record_feedback`.
+- Live `mode=demo` uses a deterministic `FlowModel` that composes those tools
+  against real Fitbit users. Tests still use `MockModel`.
 - Set `STRANDS_MODEL_PROVIDER` to `ollama`, `openai`, `anthropic`, or `bedrock`
   to use a real model through the same tools.
 
@@ -132,9 +132,11 @@ space for the best solution for this specific person.
 - `agentcore/main.py` wraps the project in `BedrockAgentCoreApp`.
 - `@app.entrypoint` handles three payload modes:
   - `{}` (default, `local`) runs the swarm directly with no model or AWS call.
-  - `{"mode":"demo", ...}` or `{"mode":"business_flow", ...}` runs the real-data
-    product loop. If no `weight_records` are supplied it loads the preloaded
-    real Fitbit users from `data/real_users/`.
+  - `{"mode":"demo", ...}` runs the Strands tool-call loop, then the 12-week
+    background agent. If no `weight_records` are supplied it loads the
+    preloaded real Fitbit users from `data/real_users/`.
+  - `{"mode":"business_flow", ...}` runs the same product loop without Strands.
+  - `{"mode":"feedback", ...}` records Lock in / Skip from the UI.
   - `{"mode":"agent","prompt":"..."}` runs the Strands tool-call loop.
 - The response for a demo run includes the calibration, the real weight summary,
   the per-week flow, the compact evolution history, the champion protocol, the
@@ -252,7 +254,7 @@ This slice stands alone as a demo and later grew into the full lab.
 | `flylab/agent.py` | translate a champion into one decision plus one reason |
 | `flylab/agent_loop.py` | background agent loop, state persistence, evolution summary |
 | `flylab/business_flow.py` | real-data product loop over weekly checkpoints |
-| `flylab/strands_agent.py` | six narrow tools, MockModel, real provider factory |
+| `flylab/strands_agent.py` | Strands tools, FlowModel demo loop, real provider factory |
 | `flylab/calibration.py` | fit twin parameters from real CSV logs |
 | `flylab/safety.py` | calorie/protein/sleep/window guardrails and escalation |
 | `flylab/memory.py` | durable per-user session and feedback memory |

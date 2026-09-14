@@ -29,9 +29,19 @@ class SafetyReport:
         }
 
 
-def safe_calorie_floor(weight_kg: float) -> int:
-    """Return a conservative floor without pretending to be medical advice."""
-    return max(1200, int(round(weight_kg * 14.0)))
+def safe_calorie_floor(
+    weight_kg: float,
+    maintenance_kcal: float | None = None,
+) -> int:
+    """Return a conservative floor without pretending to be medical advice.
+
+    ``14 kcal/kg`` was too low: a 61.5 kg user could still be handed 1329 kcal.
+    The floor is the max of 1200, 22 kcal/kg, and 80% of estimated maintenance.
+    """
+    per_kg = int(round(float(weight_kg) * 22.0))
+    maintenance = float(maintenance_kcal) if maintenance_kcal else float(weight_kg) * 30.0
+    from_maintenance = int(round(maintenance * 0.80))
+    return max(1200, per_kg, from_maintenance)
 
 
 def has_medical_red_flags(profile: UserProfile) -> bool:
@@ -45,7 +55,7 @@ def has_medical_red_flags(profile: UserProfile) -> bool:
 
 def evaluate_protocol(fly: Fly, profile: UserProfile) -> SafetyReport:
     report = SafetyReport()
-    floor = safe_calorie_floor(profile.start_weight_kg)
+    floor = safe_calorie_floor(profile.start_weight_kg, profile.maintenance_kcal)
 
     if fly.calorie_target < floor:
         report.safe = False
@@ -80,7 +90,7 @@ def evaluate_protocol(fly: Fly, profile: UserProfile) -> SafetyReport:
 
 def safe_champion(fly: Fly, profile: UserProfile) -> Fly:
     """Repair a champion protocol to a safe version without rerunning the swarm."""
-    floor = safe_calorie_floor(profile.start_weight_kg)
+    floor = safe_calorie_floor(profile.start_weight_kg, profile.maintenance_kcal)
     repaired = Fly(
         calorie_target=max(fly.calorie_target, floor),
         protein_pct=max(0.15, min(0.60, fly.protein_pct)),

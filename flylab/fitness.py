@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .genotype import Fly
+from .safety import safe_calorie_floor
 from .twin import BehavioralTwin
 
 
@@ -27,8 +28,9 @@ class FitnessWeights:
     # Structural priors for personalization:
     # binge-prone users should keep a planned late-night snack, while
     # disciplined users should not be handed unnecessary flexibility.
-    high_binge_snack_penalty: float = 12.0
-    low_binge_flex_penalty: float = 7.0
+    high_binge_snack_penalty: float = 18.0
+    low_binge_flex_penalty: float = 12.0
+    below_floor_penalty: float = 40.0
 
 
 def _fly_seed(fly: Fly) -> int:
@@ -78,11 +80,19 @@ def evaluate(
     personalization = 0.0
     if twin.profile.binge_sensitivity > 0.55 and not fly.late_night_rule:
         personalization -= w.high_binge_snack_penalty
+    if twin.profile.binge_sensitivity > 0.55 and fly.refeed_schedule == "none":
+        personalization -= w.high_binge_snack_penalty * 0.6
     if twin.profile.binge_sensitivity < 0.25:
         if fly.late_night_rule:
             personalization -= w.low_binge_flex_penalty
         if fly.refeed_schedule != "none":
             personalization -= w.low_binge_flex_penalty * 0.5
+
+    floor = safe_calorie_floor(
+        twin.profile.start_weight_kg, twin.profile.maintenance_kcal
+    )
+    if fly.calorie_target < floor:
+        personalization -= w.below_floor_penalty + 0.05 * (floor - fly.calorie_target)
 
     score = (
         loss_term

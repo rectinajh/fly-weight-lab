@@ -12,7 +12,6 @@ Optional model-driven payload:
 
 from __future__ import annotations
 
-import csv
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -22,11 +21,13 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from flylab.business_flow import load_preloaded_user, run_business_flow
 from flylab.connectome import load_params
-from flylab.evolution import Swarm
+from flylab.evolution import Swarm, unpack_history_row
 from flylab.genotype import Fly
-from flylab.safety import evaluate_protocol, safe_champion
-from flylab.strands_agent import build_strands_agent
+from flylab.memory import UserMemoryStore
+from flylab.safety import evaluate_protocol, safe_calorie_floor, safe_champion
+from flylab.strands_agent import build_strands_agent, run_demo_with_strands
 from flylab.telemetry import emit, timed
 from flylab.twin import BehavioralTwin, UserProfile
 
@@ -38,7 +39,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 _agent = None
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def _get_agent():
@@ -80,10 +80,8 @@ def _connectome_dict() -> dict[str, Any]:
 
 def _serialize_evolution(history: list) -> dict[str, Any]:
     generations = []
-    for generation, best, mean, scores in history:
-        ordered = sorted(scores)
-        median = ordered[len(ordered) // 2]
-        farm = "".join("1" if score >= median else "0" for score in scores)
+    for row in history:
+        generation, best, mean, _scores, farm = unpack_history_row(row)
         generations.append(
             {"generation": generation, "best": best, "mean": mean, "farm": farm}
         )
@@ -91,24 +89,7 @@ def _serialize_evolution(history: list) -> dict[str, Any]:
 
 
 def _load_demo_records(user_id: str) -> tuple[list, list, dict | None]:
-    from flylab.calibration import load_records
-
-    weight_path = DATA_DIR / "real_users" / f"{user_id}_weight.csv"
-    if not weight_path.exists():
-        return [], [], None
-    weight_records = load_records(weight_path)
-    activity_records: list[dict] = []
-    activity_path = DATA_DIR / "real_users" / f"{user_id}_activity.csv"
-    if activity_path.exists():
-        with activity_path.open(newline="", encoding="utf-8") as handle:
-            activity_records = list(csv.DictReader(handle))
-        activity_records.sort(key=lambda row: row.get("date", ""))
-    source = {
-        "path": f"data/real_users/{user_id}",
-        "zenodo": "10.5281/zenodo.53894",
-        "license": "CC-BY-4.0",
-    }
-    return weight_records, activity_records, source
+    return load_preloaded_user(user_id)
 
 
 def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
@@ -124,7 +105,13 @@ def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
             maintenance_kcal=2300.0,
         )
         twin = BehavioralTwin(profile, connectome=load_params())
-        result = Swarm(twin, population_size=300, generations=30, seed=7).run()
+        result = Swarm(
+            twin,
+            population_size=300,
+            generations=30,
+            seed=7,
+            calorie_min=safe_calorie_floor(profile.start_weight_kg, profile.maintenance_kcal),
+        ).run()
         champion = result.best_fly
         safety = evaluate_protocol(champion, profile)
         if not safety.safe:
@@ -181,11 +168,12 @@ def _run_business_flow_payload(payload: dict[str, Any]) -> dict[str, Any]:
         user_id,
         weight_records,
         activity_records,
-        population_size=int(payload.get("population_size", 250)),
-        generations=int(payload.get("generations", 25)),
+        population_size=int(payload.get("population_size", 180)),
+        generations=int(payload.get("generations", 18)),
         seed=int(payload.get("seed", 7)),
         memory_root=Path("runs/memory"),
         reset_memory=True,
+        horizon_weeks=int(payload.get("horizon_weeks", 12)),
     )
     report["connectome"] = _connectome_dict()
     if demo_source:
@@ -211,7 +199,26 @@ async def main(payload: dict[str, Any]) -> dict[str, Any]:
                 return {"result": result.to_dict()}
             return {"result": str(result)}
 
-        if payload.get("mode") in {"business_flow", "demo"}:
+        if payload.get("mode") == "feedback":
+            user_id = str(payload.get("user_id", "demo"))
+            store = UserMemoryStore(Path("runs/memory"))
+            state = store.append_feedback(
+                user_id,
+                {
+                    "accepted": bool(payload.get("accepted", True)),
+                    "decision": payload.get("decision"),
+                    "source": "human_ui",
+                },
+            )
+            return {"ok": True, "memory": state}
+
+        if payload.get("mode") == "demo":
+            report = await run_demo_with_strands(payload)
+            if "error" not in report:
+                report["connectome"] = _connectome_dict()
+            return report
+
+        if payload.get("mode") in {"business_flow"}:
             return _run_business_flow_payload(payload)
 
         return _run_local_swarm(payload)

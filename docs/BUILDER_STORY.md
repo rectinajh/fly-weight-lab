@@ -37,20 +37,21 @@ Fly Weight-Lab solves this with three pieces.
 ## Where the Strands Agents SDK fits
 
 The agent loop is orchestrated by Strands, and the capabilities are split into
-six narrow tools:
+narrow tools:
 
 - `get_user_context`
 - `detect_plateau`
 - `simulate_candidate`
 - `evolve_champion`
-- `surface_decision`
+- `run_background_loop`
+- `emit_decision`
 - `record_feedback`
 
 The model is not calling one black-box function. It composes these tools itself:
-read context, judge the plateau, simulate candidates, evolve a champion, produce
-a decision, record feedback. The default offline path runs the full tool-call
-loop against a deterministic MockModel, so it demos with no API key. Switching to
-Ollama, OpenAI, Anthropic, or Bedrock is an environment variable.
+read context, judge the plateau, simulate candidates, run the 12-week background
+loop, emit one decision, record feedback. The live demo path runs that full
+tool-call loop. Switching to Bedrock, Ollama, OpenAI, or Anthropic is an
+environment variable.
 
 ## Safety boundaries
 

@@ -78,13 +78,14 @@ function sampleFarm(farm, target = 110) {
   const bucket = Math.max(1, Math.round(farm.length / target));
   let out = "";
   for (let i = 0; i < farm.length; i += bucket) {
-    let ones = 0;
-    let n = 0;
+    const counts = { 0: 0, 1: 0, 2: 0 };
     for (let j = i; j < Math.min(i + bucket, farm.length); j += 1) {
-      ones += farm[j] === "1" ? 1 : 0;
-      n += 1;
+      const mark = farm[j];
+      counts[mark] = (counts[mark] || 0) + 1;
     }
-    out += ones >= n / 2 ? "1" : "0";
+    if (counts[2] > 0) out += "2";
+    else if (counts[1] >= counts[0]) out += "1";
+    else out += "0";
   }
   return out;
 }
@@ -273,7 +274,10 @@ function evolutionCard(evolution, title, subtitle) {
       const cells = sampleFarm(g.farm, 110);
       const html = cells
         .split("")
-        .map((c) => `<span class="farm-cell ${c === "1" ? "alive" : "dead"}"></span>`)
+        .map((c) => {
+          const kind = c === "2" ? "elite" : c === "1" ? "parent" : "dead";
+          return `<span class="farm-cell ${kind}"></span>`;
+        })
         .join("");
       return `<div class="farm-row"><span class="farm-label">G${g.generation}</span><div class="farm-cells">${html}</div></div>`;
     })
@@ -283,7 +287,7 @@ function evolutionCard(evolution, title, subtitle) {
     <article class="card wide">
       <div class="card-head">
         <div><p class="kicker">Genetic swarm · convergence radar</p><h2>${title}</h2><p class="note">${subtitle}</p></div>
-        <div class="legend"><span class="q">survives</span><span class="s">culled</span></div>
+        <div class="legend"><span class="q">elite kept</span><span class="p">parent pool</span><span class="s">culled</span></div>
       </div>
       <div class="evo-grid">
         <div class="radar-wrap"><canvas id="radarCanvas"></canvas></div>
@@ -295,31 +299,36 @@ function evolutionCard(evolution, title, subtitle) {
 }
 
 function weightCard(report) {
+  const flow = report.flow || [];
   const ws = report.real_weight_summary;
-  const checkpoints = ws?.weekly_checkpoints || [];
-  if (checkpoints.length < 2) {
-    return `<article class="card"><div class="card-head"><div><p class="kicker">Real data</p><h2>Real weight trajectory</h2></div></div><p class="note">Not enough checkpoints to plot.</p></article>`;
+  if (flow.length < 2) {
+    return `<article class="card"><div class="card-head"><div><p class="kicker">Twin projection</p><h2>12-week trajectory</h2></div></div><p class="note">Not enough weeks to plot.</p></article>`;
   }
-  const points = checkpoints.map((c) => ({ value: c.weight_kg }));
+  const points = flow.map((c) => ({ value: c.weight_kg }));
   const markers = (report.surfaced_weeks || [])
-    .map((w) => ({ index: w - 1, value: checkpoints[w - 1]?.weight_kg }))
+    .map((w) => ({ index: w - 1, value: flow[w - 1]?.weight_kg }))
     .filter((m) => m.index >= 0 && m.value != null);
   const chart = lineChart(points, {
     width: 620,
     height: 220,
     series: [{ key: "value", color: "#4cc9f0", width: 2.4 }],
     markers,
-    xLabels: checkpoints.map((_, i) => `W${i + 1}`),
+    xLabels: flow.map((_, i) => `W${i + 1}`),
   });
-  const change = ws.observed_weight_change_kg;
+  const start = flow[0].weight_kg;
+  const end = flow[flow.length - 1].weight_kg;
+  const change = start - end;
   const sign = change > 0 ? "−" : "+";
+  const realNote = ws
+    ? `${ws.n_records} real Fitbit rows (${ws.start_weight_kg} → ${ws.end_weight_kg} kg) fitted the twin. Yellow × = weeks the agent spoke.`
+    : "Yellow × marks the weeks the agent surfaced a decision.";
   return `
     <article class="card">
       <div class="card-head">
-        <div><p class="kicker">Real Fitbit data</p><h2>Real weight trajectory</h2><p class="note">${ws.n_records} real weight records · ${ws.start_weight_kg} kg → ${ws.end_weight_kg} kg (${sign}${Math.abs(change).toFixed(1)} kg)</p></div>
+        <div><p class="kicker">Background loop · 12 weeks</p><h2>Projected weight trajectory</h2><p class="note">${flow.length} weeks on the fitted twin · ${start.toFixed(1)} kg → ${end.toFixed(1)} kg (${sign}${Math.abs(change).toFixed(1)} kg)</p></div>
       </div>
       ${chart}
-      <p class="note">Yellow × marks the weeks the agent surfaced a decision. Every other week stays quiet.</p>
+      <p class="note">${realNote}</p>
     </article>`;
 }
 
@@ -385,7 +394,11 @@ function decisionCard(report) {
         <p class="action">${decision.action}</p>
         <p class="reason">${decision.reason}</p>
       </div>
-      <p class="note">Not five pages of suggestions — one next step you can actually take.</p>
+      <div class="decision-actions">
+        <button id="lockDecision" class="primary small">Lock in this habit</button>
+        <button id="skipDecision" class="ghost small">Skip — stay quiet</button>
+      </div>
+      <p class="note" id="feedbackNote">Not five pages of suggestions — one next step you can actually take.</p>
     </article>`;
 }
 
@@ -396,6 +409,11 @@ function safetyCalibrationCard(report) {
   const adaptation = cal.metabolic_adaptation ?? 0;
   const adherence = cal.adherence_base ?? 0;
   const warnings = (safety.warnings || []).length ? safety.warnings.join("; ") : "No risk warnings";
+  const source = report.calibration?.adherence_source === "explicit"
+    ? "Adherence fitted from an explicit log column."
+    : "Adherence is a neutral prior — the Fitbit export has no adherence column.";
+  const archetype = report.calibration?.archetype || "fitted";
+  const floor = report.calibration?.calorie_floor || report.safety?.calorie_floor;
   const gauges = [
     { label: "Binge sensitivity", value: binge, display: binge.toFixed(2) },
     { label: "Metabolic adaptation", value: adaptation, display: adaptation.toFixed(2) },
@@ -408,10 +426,73 @@ function safetyCalibrationCard(report) {
         ${gauges.map((g) => `<div class="gauge"><div class="gauge-top"><span>${g.label}</span><b>${g.display}</b></div><div class="bar"><div class="fill" style="width:${Math.round(g.value * 100)}%"></div></div></div>`).join("")}
       </div>
       <div style="margin-top:16px;font-size:13px">
+        <p style="margin:0 0 6px;color:var(--muted)">Trajectory prior: <b>${archetype.replace("_", " ")}</b>${floor ? ` · calorie floor ${floor} kcal` : ""}</p>
         <p style="margin:0 0 6px;color:var(--muted)">Safety boundary: <b style="color:${safety.red_flags ? "var(--red)" : "var(--green)"}">${safety.red_flags ? "Escalation triggered" : "Passed"}</b></p>
-        <p class="note">${warnings}. This agent is a behavioral sentinel — not a diagnosis, not a prescription.</p>
+        <p class="note">${source} ${warnings}. This agent is a behavioral sentinel — not a diagnosis, not a prescription.</p>
       </div>
     </article>`;
+}
+
+function strandsCard(report) {
+  const strands = report.strands;
+  const trace = strands?.tool_trace || [];
+  if (!trace.length) return "";
+  const steps = trace
+    .map((step, i) => `<li><b>${i + 1}. ${step.tool}</b></li>`)
+    .join("");
+  return `
+    <article class="card">
+      <div class="card-head"><div><p class="kicker">Strands Agents SDK</p><h2>Tool-call loop</h2><p class="note">Provider ${strands.provider || "flow"} · the model composed these tools instead of one god function.</p></div></div>
+      <ol class="trace">${steps}</ol>
+      <p class="note">${strands.message || "One decision surfaced. The rest of the weeks stayed quiet."}</p>
+    </article>`;
+}
+
+function connectomeEffectCard(report) {
+  const effect = report.connectome_effect;
+  if (!effect) return "";
+  const from = effect.aggressive_binge_ungrounded;
+  const to = effect.aggressive_binge_grounded;
+  return `
+    <article class="card">
+      <div class="card-head"><div><p class="kicker">Real connectome prior</p><h2>Grounded vs ungrounded</h2></div></div>
+      <div class="champion-grid">
+        <div class="champ-cell"><div class="value">${from}</div><div class="label">Binge risk without wiring</div></div>
+        <div class="champ-cell"><div class="value">${to}</div><div class="label">Binge risk with MaleCNS prior</div></div>
+        <div class="champ-cell"><div class="value">${effect.reward_punishment_ratio} : 1</div><div class="label">Reward : punishment</div></div>
+      </div>
+      <p class="note">Restriction leans on punishment, but the real mushroom body weights reward ${effect.reward_punishment_ratio}× higher, so crash diets get a higher binge-risk score.</p>
+    </article>`;
+}
+
+function bindDecisionActions(report) {
+  const lock = document.getElementById("lockDecision");
+  const skip = document.getElementById("skipDecision");
+  const note = document.getElementById("feedbackNote");
+  if (!lock || !skip) return;
+  const send = async (accepted) => {
+    lock.disabled = true;
+    skip.disabled = true;
+    try {
+      await post({
+        mode: "feedback",
+        user_id: report.user_id,
+        accepted,
+        decision: report.decision,
+      });
+      if (note) {
+        note.textContent = accepted
+          ? "Locked in. The agent stays quiet until the next real decision."
+          : "Skipped. The agent recorded that you stayed on the current protocol.";
+      }
+    } catch (err) {
+      if (note) note.textContent = err.message;
+      lock.disabled = false;
+      skip.disabled = false;
+    }
+  };
+  lock.addEventListener("click", () => send(true));
+  skip.addEventListener("click", () => send(false));
 }
 
 function compareCard(a, b) {
@@ -422,6 +503,7 @@ function compareCard(a, b) {
     { label: "Planned refeed", value: side.champion.refeed_schedule === "none" ? "none" : side.champion.refeed_schedule, diff: side.champion.refeed_schedule !== other.champion.refeed_schedule },
     { label: "Sleep target", value: `${side.champion.sleep_target}h`, diff: side.champion.sleep_target !== other.champion.sleep_target },
     { label: "Binge sensitivity", value: side.calibration.profile.binge_sensitivity.toFixed(2), diff: Math.abs(side.calibration.profile.binge_sensitivity - other.calibration.profile.binge_sensitivity) > 0.05 },
+    { label: "Trajectory prior", value: (side.calibration.archetype || "fitted").replace("_", " "), diff: side.calibration.archetype !== other.calibration.archetype },
   ];
   const sideHtml = (side, other, name) => `
     <div class="side">
@@ -434,8 +516,8 @@ function compareCard(a, b) {
         <div><p class="kicker">Personalization proof</p><h2>Two real users · same goal · opposite protocols</h2><p class="note">The same swarm engine, different real behavioral data, different champions. That is personalization, not a template.</p></div>
       </div>
       <div class="compare">
-        ${sideHtml(a, b, `User A · ${a.user_id}`)}
-        ${sideHtml(b, a, `User B · ${b.user_id}`)}
+        ${sideHtml(a, b, `${a.calibration?.archetype || "User A"} · ${a.user_id}`)}
+        ${sideHtml(b, a, `${b.calibration?.archetype || "User B"} · ${b.user_id}`)}
       </div>
     </article>`;
 }
@@ -449,7 +531,7 @@ function renderDemo(report, compare) {
   const html = `
     <article class="card wide">
       <div class="card-head">
-        <div><p class="kicker">Real business flow</p><h2>User ${report.user_id}</h2><p class="note">${report.real_weight_summary.n_records} real weight records → calibrate the twin → weekly background ticks → one surfaced decision → durable feedback.</p></div>
+        <div><p class="kicker">Strands + real Fitbit</p><h2>User ${report.user_id}</h2><p class="note">${report.real_weight_summary.n_records} real weight records → Strands tools → 12-week quiet loop → one surfaced decision.</p></div>
         <div class="runtime-tag">${source}</div>
       </div>
     </article>
@@ -463,10 +545,15 @@ function renderDemo(report, compare) {
       ${decisionCard(report)}
       ${safetyCalibrationCard(report)}
     </div>
+    <div class="grid-2">
+      ${strandsCard(report)}
+      ${connectomeEffectCard(report)}
+    </div>
     ${compareCard(report, compare)}
   `;
   dashboard.innerHTML = html;
   initRadar(document.getElementById("radarCanvas"), report.evolution);
+  bindDecisionActions(report);
   stopLoading();
 }
 
@@ -499,8 +586,8 @@ async function runDemoFlow() {
   clearError();
   const userA = state.user;
   const userB = userA === "6962181067" ? "8877689391" : "6962181067";
-  const payloadA = { mode: "demo", user_id: userA, population_size: 250, generations: 25, seed: 7 };
-  const payloadB = { mode: "demo", user_id: userB, population_size: 250, generations: 25, seed: 7 };
+  const payloadA = { mode: "demo", user_id: userA, population_size: 180, generations: 18, seed: 7, horizon_weeks: 12 };
+  const payloadB = { mode: "demo", user_id: userB, population_size: 180, generations: 18, seed: 7, horizon_weeks: 12 };
   setLoading(`Evolving the ${userA} and ${userB} swarms on real Fitbit data…`);
   try {
     const [a, b] = await Promise.all([post(payloadA), post(payloadB)]);
@@ -592,9 +679,10 @@ async function runUploadFlow() {
       user_id: "uploaded_user",
       weight_records,
       activity_records,
-      population_size: 250,
-      generations: 25,
+      population_size: 180,
+      generations: 18,
       seed: 7,
+      horizon_weeks: 12,
     });
     state.demo = report;
     state.compare = null;

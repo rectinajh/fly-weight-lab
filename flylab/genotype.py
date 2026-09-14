@@ -52,12 +52,19 @@ class Fly:
         )
 
     @classmethod
-    def random(cls, rng: random.Random | None = None) -> "Fly":
+    def random(
+        cls,
+        rng: random.Random | None = None,
+        calorie_min: int | None = None,
+        calorie_max: int = 2400,
+    ) -> "Fly":
         rng = rng or random.Random()
         protein = rng.uniform(0.25, 0.45)
         carb = rng.uniform(0.20, 0.50)
+        low = int(calorie_min) if calorie_min is not None else CALORIE_FLOOR
+        high = max(low + 50, int(calorie_max))
         return cls(
-            calorie_target=rng.randint(1400, 2200),
+            calorie_target=rng.randint(low, high),
             protein_pct=round(protein, 3),
             carb_pct=round(carb, 3),
             meal_window=rng.randint(8, 16),
@@ -70,8 +77,14 @@ class Fly:
             step_target=rng.randint(4000, 12000),
         )._normalize()
 
-    def mutate(self, rng: random.Random | None = None, rate: float = 0.2) -> "Fly":
+    def mutate(
+        self,
+        rng: random.Random | None = None,
+        rate: float = 0.2,
+        calorie_min: int | None = None,
+    ) -> "Fly":
         rng = rng or random.Random()
+        floor = int(calorie_min) if calorie_min is not None else CALORIE_FLOOR
 
         def jitter(value: float, low: float, high: float, step: float) -> float:
             if rng.random() >= rate:
@@ -79,7 +92,7 @@ class Fly:
             return _clamp(value + rng.uniform(-step, step), low, high)
 
         return Fly(
-            calorie_target=int(round(jitter(self.calorie_target, CALORIE_FLOOR, 2400, 100))),
+            calorie_target=int(round(jitter(self.calorie_target, floor, 2400, 100))),
             protein_pct=round(jitter(self.protein_pct, 0.20, 0.45, 0.03), 3),
             carb_pct=round(jitter(self.carb_pct, 0.15, 0.50, 0.03), 3),
             meal_window=int(round(jitter(self.meal_window, 8, 16, 1))),
@@ -90,7 +103,7 @@ class Fly:
             sleep_target=round(jitter(self.sleep_target, 6.5, 9.5, 0.3), 1),
             refeed_schedule=rng.choice(REFEEED_OPTIONS) if rng.random() < rate else self.refeed_schedule,
             step_target=int(round(jitter(self.step_target, 3000, 15000, 500))),
-        )._normalize()
+        )._normalize(calorie_min=floor)
 
     def crossover(self, other: "Fly", rng: random.Random | None = None) -> "Fly":
         rng = rng or random.Random()
@@ -112,8 +125,9 @@ class Fly:
             step_target=pick(self.step_target, other.step_target),
         )._normalize()
 
-    def _normalize(self) -> "Fly":
-        self.calorie_target = int(_clamp(self.calorie_target, CALORIE_FLOOR, 2400))
+    def _normalize(self, calorie_min: int | None = None) -> "Fly":
+        floor = int(calorie_min) if calorie_min is not None else CALORIE_FLOOR
+        self.calorie_target = int(_clamp(self.calorie_target, floor, 2400))
         self.protein_pct = round(_clamp(self.protein_pct, 0.20, 0.45), 3)
         self.carb_pct = round(_clamp(self.carb_pct, 0.15, 0.50), 3)
         if self.protein_pct + self.carb_pct > 0.85:

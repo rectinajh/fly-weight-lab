@@ -103,8 +103,8 @@ export OLLAMA_MODEL=llama3.2
 ```
 
 Restart the backend and `{"mode":"agent","prompt":"..."}` runs a real model
-through the same six narrow tools. Without these variables Strands uses the
-deterministic MockModel and still completes the full tool-call loop.
+through the same tools. Without these variables the live demo uses the
+deterministic FlowModel and still completes the full tool-call loop.
 
 ## 6. Regenerating the real data
 

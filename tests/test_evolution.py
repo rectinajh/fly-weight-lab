@@ -46,6 +46,9 @@ class TestEvolution(unittest.TestCase):
         first_best = result.history[0][1]
         last_best = result.history[-1][1]
         self.assertGreater(last_best, first_best)
+        farm = result.history[-1][4]
+        self.assertIn("0", farm)
+        self.assertIn("2", farm)
 
 
 class TestConnectome(unittest.TestCase):

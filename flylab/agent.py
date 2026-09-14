@@ -33,12 +33,18 @@ def surface_decision(
                 "Further restriction would push adherence down and trigger metabolic adaptation"
             )
         elif champion.calorie_target < current.calorie_target:
+            drop = current.calorie_target - champion.calorie_target
             actions.append(
                 f"Lower your daily calorie target from {current.calorie_target} to {champion.calorie_target} kcal"
             )
-            reasons.append(
-                "A slightly tighter deficit that does not meaningfully raise binge risk"
-            )
+            if drop < 150:
+                reasons.append(
+                    "A slightly tighter deficit that stays above the safety floor"
+                )
+            else:
+                reasons.append(
+                    "A modest deficit that stays above the safety floor instead of a crash cut"
+                )
         if champion.late_night_rule and not current.late_night_rule:
             actions.append("Keep a fixed late-night snack")
             reasons.append(

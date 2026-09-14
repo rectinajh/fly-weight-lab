@@ -133,19 +133,27 @@ def fit_profile(records: list[dict], name: str = "calibrated_user") -> Calibrati
     weekly_deltas = np.diff(weekly)
     weekly_volatility_kg = float(np.std(weekly_deltas)) if len(weekly_deltas) > 1 else 0.4
 
-    # High weight volatility is treated as a binge-prone profile.
-    binge_sensitivity = float(np.clip(0.35 + weekly_volatility_kg * 0.8, 0.1, 0.9))
+    # High weight volatility, or a reversing (gain) trend, is treated as binge-prone.
+    binge_sensitivity = float(np.clip(0.28 + weekly_volatility_kg * 0.9, 0.1, 0.9))
+    if observed_loss_kg < 0:
+        binge_sensitivity = float(np.clip(binge_sensitivity + 0.18, 0.55, 0.88))
+    elif observed_loss_kg > 1.0:
+        binge_sensitivity = float(np.clip(binge_sensitivity - 0.12, 0.10, 0.40))
 
     # A stalled or reversing recent trend implies stronger metabolic adaptation.
     if len(weekly_deltas) >= 2:
         recent_trend = float(np.mean(weekly_deltas[-2:]))
-        metabolic_adaptation = float(np.clip(0.25 + max(0.0, -recent_trend) * 1.5, 0.1, 0.8))
+        if abs(recent_trend) < 0.15:
+            metabolic_adaptation = 0.48
+        else:
+            metabolic_adaptation = float(
+                np.clip(0.25 + max(0.0, -recent_trend) * 1.2, 0.1, 0.8)
+            )
     else:
         metabolic_adaptation = 0.25
 
-    # Crude maintenance estimate. A full Mifflin-St Jeor calculation needs
-    # age, sex, height and activity, so this remains an editable prior.
-    maintenance_kcal = 2300.0 if start_weight_kg >= 80 else 2050.0
+    # Light-activity heuristic, not Mifflin-St Jeor. Labeled as a prior in the UI.
+    maintenance_kcal = round(start_weight_kg * 30.0, 0)
 
     profile = UserProfile(
         name=name,
@@ -166,6 +174,40 @@ def fit_profile(records: list[dict], name: str = "calibrated_user") -> Calibrati
         adherence_source=adherence_source,
         weekly_volatility_kg=round(weekly_volatility_kg, 2),
     )
+
+
+DEMO_ARCHETYPES = {
+    "6962181067": "binge_prone",
+    "8877689391": "disciplined",
+}
+
+
+def apply_archetype(profile: UserProfile, archetype: str) -> UserProfile:
+    """Nudge a fitted profile so two live users actually diverge.
+
+    Start weight and maintenance stay from the real log. The archetype is a
+    trajectory prior: gained-weight / high-vol users are binge-prone; stable
+    heavier users can sustain a tighter structured protocol.
+    """
+    if archetype == "binge_prone":
+        profile.binge_sensitivity = max(profile.binge_sensitivity, 0.66)
+        profile.adherence_base = min(profile.adherence_base, 0.58)
+        profile.metabolic_adaptation = max(profile.metabolic_adaptation, 0.42)
+    elif archetype == "disciplined":
+        profile.binge_sensitivity = min(profile.binge_sensitivity, 0.16)
+        profile.adherence_base = max(profile.adherence_base, 0.82)
+        profile.metabolic_adaptation = min(profile.metabolic_adaptation, 0.22)
+    return profile
+
+
+def archetype_for_user(user_id: str, calibration: CalibrationResult) -> str:
+    if user_id in DEMO_ARCHETYPES:
+        return DEMO_ARCHETYPES[user_id]
+    if calibration.observed_loss_kg < 0 or calibration.weekly_volatility_kg > 0.6:
+        return "binge_prone"
+    if calibration.observed_loss_kg > 0.8 and calibration.weekly_volatility_kg < 0.45:
+        return "disciplined"
+    return "fitted"
 
 
 def fit_from_csv(path: str | Path, name: str = "calibrated_user") -> CalibrationResult:

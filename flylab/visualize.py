@@ -8,7 +8,21 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 
-def render_population(scores: list[float], width: int = 44) -> str:
+def render_population(scores: list[float], farm: str | None = None, width: int = 44) -> str:
+    if farm:
+        glyphs = []
+        step = max(1, len(farm) // width)
+        for i in range(0, len(farm), step):
+            mark = farm[i]
+            if mark == "2":
+                glyphs.append(f"{GREEN}{BOLD}▮{RESET}")
+            elif mark == "1":
+                glyphs.append(f"{GREEN}▫{RESET}")
+            else:
+                glyphs.append(f"{RED}▮{RESET}")
+            if len(glyphs) >= width:
+                break
+        return "".join(glyphs)
     if not scores:
         return ""
     ordered = sorted(scores)
@@ -25,11 +39,16 @@ def print_evolution(result, farm_every: int | None = None) -> None:
     print(f"\n{BOLD}Evolution history (gen | best | mean | population farm){RESET}")
     print(f"{'gen':>4} {'best':>8} {'mean':>8}  farm")
     last_gen = result.history[-1][0]
-    for gen, best, mean, scores in result.history:
+    for gen, best, mean, scores, farm in (
+        (row[0], row[1], row[2], row[3], row[4] if len(row) > 4 else "")
+        for row in result.history
+    ):
         show = farm_every and (gen == 0 or gen == last_gen or gen % farm_every == 0)
-        farm = render_population(scores) if show else ""
-        print(f"{gen:>4} {best:>8.2f} {mean:>8.2f}  {farm}")
-    print(f"\nLegend: {GREEN}▮ alive (top half){RESET}  {RED}▮ dead (bottom half){RESET}")
+        rendered = render_population(scores, farm) if show else ""
+        print(f"{gen:>4} {best:>8.2f} {mean:>8.2f}  {rendered}")
+    print(
+        f"\nLegend: {GREEN}▮ elite{RESET}  {GREEN}▫ parent pool{RESET}  {RED}▮ culled{RESET}"
+    )
 
 
 def chart(result, out_path: str | None = None) -> str | None:

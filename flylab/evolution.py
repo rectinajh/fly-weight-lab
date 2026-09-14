@@ -17,6 +17,21 @@ class EvolutionResult:
     history: list  # list of (generation, best_score, mean_score, population_scores)
 
 
+def farm_from_ranked_scores(scores: list[float], elitism: int = 5) -> str:
+    """Encode actual GA survival, not a median split.
+
+    ``2`` = elite kept unchanged, ``1`` = parent pool, ``0`` = culled.
+    """
+    n = len(scores)
+    if n == 0:
+        return ""
+    elite_cut = min(max(1, elitism), n)
+    parent_cut = min(n, max(elite_cut, n // 4))
+    return "".join(
+        "2" if i < elite_cut else "1" if i < parent_cut else "0" for i in range(n)
+    )
+
+
 class Swarm:
     def __init__(
         self,
@@ -27,6 +42,7 @@ class Swarm:
         tournament_k: int = 3,
         seed: int | None = None,
         weights: FitnessWeights | None = None,
+        calorie_min: int | None = None,
     ):
         self.twin = twin
         self.population_size = population_size
@@ -35,10 +51,14 @@ class Swarm:
         self.tournament_k = tournament_k
         self.seed = seed
         self.weights = weights
+        self.calorie_min = calorie_min
 
     def run(self) -> EvolutionResult:
         rng = random.Random(self.seed)
-        population = [Fly.random(rng) for _ in range(self.population_size)]
+        population = [
+            Fly.random(rng, calorie_min=self.calorie_min)
+            for _ in range(self.population_size)
+        ]
         best_fly: Fly | None = None
         best_score = float("-inf")
         history: list = []
@@ -57,12 +77,14 @@ class Swarm:
                 best_score = top_score
                 best_fly = top_fly
 
+            ranked_scores = [score for score, _ in scored]
             history.append(
                 (
                     generation,
                     round(best_score, 3),
                     round(mean_score, 3),
-                    [score for score, _ in scored],
+                    ranked_scores,
+                    farm_from_ranked_scores(ranked_scores, self.elitism),
                 )
             )
 
@@ -71,7 +93,9 @@ class Swarm:
             while len(next_population) < self.population_size:
                 parent_a = self._tournament(scored, rng)
                 parent_b = self._tournament(scored, rng)
-                child = parent_a.crossover(parent_b, rng).mutate(rng)
+                child = parent_a.crossover(parent_b, rng).mutate(
+                    rng, calorie_min=self.calorie_min
+                )
                 next_population.append(child)
             population = next_population
 
@@ -81,3 +105,10 @@ class Swarm:
         k = k or self.tournament_k
         contestants = [scored[rng.randrange(len(scored))] for _ in range(k)]
         return max(contestants, key=lambda item: item[0])[1]
+
+
+def unpack_history_row(row) -> tuple:
+    """Accept both legacy 4-tuples and farm-aware 5-tuples."""
+    generation, best, mean, scores = row[0], row[1], row[2], row[3]
+    farm = row[4] if len(row) > 4 else farm_from_ranked_scores(scores)
+    return generation, best, mean, scores, farm
