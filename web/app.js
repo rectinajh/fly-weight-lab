@@ -10,7 +10,8 @@ const pingText = document.getElementById("pingText");
 const errorBox = document.getElementById("error");
 
 function baseUrl() {
-  return backendInput.value.replace(/\/$/, "");
+  const value = backendInput.value.trim().replace(/\/$/, "");
+  return value || "/api";
 }
 
 async function checkPing() {
@@ -30,7 +31,7 @@ async function checkPing() {
 
 async function post(payload) {
   errorBox.textContent = "";
-  const response = await fetch(`${baseUrl()}/invocations`, {
+    const response = await fetch(`${baseUrl()}/invocations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -160,7 +161,7 @@ runBusiness.addEventListener("click", async () => {
       generations: 25,
       seed: 7,
     };
-    const response = await fetch(`${baseUrl()}/business-flow`, {
+    const response = await fetch(`${baseUrl()}/invocations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

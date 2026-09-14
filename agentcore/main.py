@@ -101,14 +101,23 @@ async def _business_flow(request: Request) -> JSONResponse:
     except Exception:
         return JSONResponse({"error": "request body must be JSON"}, status_code=400)
 
+    report = _run_business_flow_payload(payload)
+    if "error" in report:
+        return JSONResponse(report, status_code=400)
+    return JSONResponse(report)
+
+
+def _run_business_flow_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate a business-flow payload and run it (shared by route + entrypoint)."""
+    from flylab.business_flow import run_business_flow
+
     user_id = str(payload.get("user_id", "uploaded_user"))
     weight_records = payload.get("weight_records")
     activity_records = payload.get("activity_records", [])
     if not isinstance(weight_records, list) or not weight_records:
-        return JSONResponse(
-            {"error": "weight_records must be a non-empty list"},
-            status_code=400,
-        )
+        return {"error": "weight_records must be a non-empty list"}
+    if not isinstance(activity_records, list):
+        return {"error": "activity_records must be a list"}
 
     report = run_business_flow(
         user_id,
@@ -120,7 +129,7 @@ async def _business_flow(request: Request) -> JSONResponse:
         memory_root=Path("runs/memory"),
         reset_memory=True,
     )
-    return JSONResponse(report)
+    return report
 
 
 @app.entrypoint
@@ -140,6 +149,9 @@ async def main(payload: dict[str, Any]) -> dict[str, Any]:
             if hasattr(result, "to_dict"):
                 return {"result": result.to_dict()}
             return {"result": str(result)}
+
+        if payload.get("mode") == "business_flow":
+            return _run_business_flow_payload(payload)
 
         return _run_local_swarm(payload)
 

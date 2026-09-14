@@ -32,7 +32,6 @@ import sys
 import time
 
 import boto3
-from botocore.exceptions import ClientError
 
 
 REQUIRED_ENV = ("AGENTCORE_ROLE_ARN",)
@@ -101,6 +100,35 @@ def build_arm64_image(local_image: str) -> None:
         run(fallback_cmd)
 
 
+def find_runtime_by_name(client, agent_name: str) -> dict | None:
+    runtimes = client.list_agent_runtimes()
+    return next(
+        (
+            item
+            for item in runtimes.get("agentRuntimes", [])
+            if item.get("agentRuntimeName") == agent_name
+        ),
+        None,
+    )
+
+
+def wait_until_ready(client, runtime_id: str) -> None:
+    for _ in range(60):
+        state = client.get_agent_runtime(agentRuntimeId=runtime_id)
+        status = state.get("status")
+        print(f"  runtime status: {status}")
+        if status == "READY":
+            print("Agent runtime is READY:")
+            print(json.dumps(state, default=str, indent=2))
+            return
+        if status in {"CREATE_FAILED", "UPDATE_FAILED", "FAILED"}:
+            print("Agent runtime failed:")
+            print(json.dumps(state, default=str, indent=2))
+            raise SystemExit("Agent runtime creation/update failed")
+        time.sleep(10)
+    raise SystemExit("Timed out waiting for Agent runtime to become READY")
+
+
 def main() -> None:
     role_arn = require_env("AGENTCORE_ROLE_ARN")
     region = os.environ.get("AWS_REGION") or boto3.Session().region_name
@@ -139,57 +167,34 @@ def main() -> None:
     run(["docker", "push", remote_image])
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
-    try:
+    artifact = {"containerConfiguration": {"containerUri": remote_image}}
+    kwargs = {
+        "agentRuntimeArtifact": artifact,
+        "roleArn": role_arn,
+        "networkConfiguration": {"networkMode": "PUBLIC"},
+        "protocolConfiguration": {"serverProtocol": "HTTP"},
+        "environmentVariables": {"PYTHONUNBUFFERED": "1"},
+        "description": "Fly Weight-Lab background weight-loss agent",
+    }
+
+    existing = find_runtime_by_name(client, agent_name)
+    if existing is None:
         response = client.create_agent_runtime(
             agentRuntimeName=agent_name,
-            description="Fly Weight-Lab background weight-loss agent",
-            agentRuntimeArtifact={
-                "containerConfiguration": {
-                    "containerUri": remote_image,
-                }
-            },
-            roleArn=role_arn,
-            networkConfiguration={"networkMode": "PUBLIC"},
-            protocolConfiguration={"serverProtocol": "HTTP"},
-            environmentVariables={"PYTHONUNBUFFERED": "1"},
+            **kwargs,
         )
-    except ClientError as exc:
-        if exc.response["Error"]["Code"] == "ConflictException":
-            runtimes = client.list_agent_runtimes()
-            match = next(
-                (
-                    item
-                    for item in runtimes.get("agentRuntimes", [])
-                    if item.get("agentRuntimeName") == agent_name
-                ),
-                None,
-            )
-            if match is None:
-                raise
-            print("Reusing existing runtime:")
-            print(json.dumps(match, default=str, indent=2))
-            return
-        raise
+        print("Agent runtime requested:")
+        print(json.dumps(response, default=str, indent=2))
+    else:
+        runtime_id = existing["agentRuntimeId"]
+        response = client.update_agent_runtime(
+            agentRuntimeId=runtime_id,
+            **kwargs,
+        )
+        print("Agent runtime update requested:")
+        print(json.dumps(response, default=str, indent=2))
 
-    runtime_id = response["agentRuntimeId"]
-    print("Agent runtime requested:")
-    print(json.dumps(response, default=str, indent=2))
-
-    for _ in range(60):
-        state = client.get_agent_runtime(agentRuntimeId=runtime_id)
-        status = state.get("status")
-        print(f"  runtime status: {status}")
-        if status == "READY":
-            print("Agent runtime is READY:")
-            print(json.dumps(state, default=str, indent=2))
-            return
-        if status in {"CREATE_FAILED", "UPDATE_FAILED", "FAILED"}:
-            print("Agent runtime failed:")
-            print(json.dumps(state, default=str, indent=2))
-            raise SystemExit("Agent runtime creation failed")
-        time.sleep(10)
-
-    raise SystemExit("Timed out waiting for Agent runtime to become READY")
+    wait_until_ready(client, response["agentRuntimeId"])
 
 
 if __name__ == "__main__":

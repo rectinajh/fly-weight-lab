@@ -102,7 +102,17 @@ POST /invocations (payload {})
 
 说明容器内的 `/invocations`、`/ping` 入口和真实蜂群计算都在云端托管运行时中工作，而不是本地 mock。
 
-> 注意：AgentCore 数据面调用使用 SigV4，浏览器无法直接签名。若要前端静态站直接连后端，需要本地/轻量代理把浏览器的 `/invocations` 转发到 `invoke_agent_runtime`，或在后端另开一个公开 API 网关入口。
+> 浏览器直连已通过 Vercel Serverless 代理打通：`web/api/invocations.js` 把浏览器的 `/api/invocations` 转发到 `invoke_agent_runtime`，`web/api/ping.js` 用控制面 `GetAgentRuntime` 做健康检查。前端默认后端地址为 `/api`，线上演示无需本地后端。
+
+线上演示：https://fly-weight-lab-demo.vercel.app
+
+代理需要以下 Vercel Production 环境变量（值已写入 Vercel，不在仓库中）：
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION=us-east-1`
+- `AGENTCORE_RUNTIME_ARN`
+- `AGENTCORE_RUNTIME_ID`
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 
