@@ -1,6 +1,6 @@
 # AgentCore 部署说明 — Fly Weight-Lab
 
-> 状态：入口代码已验证可导入；真实云端部署需要 AWS 账号、Bedrock 模型访问权限和 AgentCore 项目。
+> 状态：真实 AgentCore Runtime 已部署到 AWS 并进入 READY，数据面调用已实测返回真实蜂群结果。
 
 ## 1. 为什么需要 AgentCore
 
@@ -61,15 +61,48 @@ POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
 5. 本地运行并测试 `/ping` 与 `/invocations`。
 6. 执行 `agentcore deploy` 部署到 AWS。
 
-也可以直接使用本仓库脚本：
+也可以直接使用本仓库脚本（推荐，已实测跑通）：
 
 ```bash
-export AGENTCORE_ROLE_ARN=<role-arn>
+export AWS_PROFILE=flyweight-agentcore
+export AGENTCORE_ROLE_ARN=arn:aws:iam::032529260721:role/flyweight-agentcore-runtime-role
+export AWS_REGION=us-east-1
 .venv/bin/python scripts/deploy_agentcore.py
 ```
 
+首次部署前需要先创建运行时执行角色：
+
+```bash
+AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/setup_agentcore_role.py
+```
+
+角色信任 `bedrock-agentcore.amazonaws.com`，内联策略包含 ECR 拉取、CloudWatch Logs、X-Ray、CloudWatch Metrics、Bedrock 模型调用与 AgentCore memory/identity 的最小权限。
+
 脚本会自动从 AWS STS 推导账号 ID，从当前 boto3 session 推导区域；也可以显式设置 `AWS_REGION` 和 `AWS_ACCOUNT_ID`。
 如果本机没有 `docker buildx`，脚本会回退到 `docker build --platform linux/arm64`。
+
+## 4a. 已部署的真实 Runtime
+
+当前生产运行时：
+
+- Runtime ARN：`arn:aws:bedrock-agentcore:us-east-1:032529260721:runtime/flyweight_lab-k3JItG63s2`
+- Runtime ID：`flyweight_lab-k3JItG63s2`
+- 状态：`READY`
+- 镜像：`032529260721.dkr.ecr.us-east-1.amazonaws.com/fly-weight-lab-agent:latest`
+- 协议：`HTTP`
+- 网络：`PUBLIC`
+- 执行角色：`arn:aws:iam::032529260721:role/flyweight-agentcore-runtime-role`
+
+已通过 Bedrock AgentCore 数据面实测：
+
+```text
+POST /invocations (payload {})
+-> 200 {"mode":"local","champion":{...},"fitness":...,"adherence":...,"safety":{...}}
+```
+
+说明容器内的 `/invocations`、`/ping` 入口和真实蜂群计算都在云端托管运行时中工作，而不是本地 mock。
+
+> 注意：AgentCore 数据面调用使用 SigV4，浏览器无法直接签名。若要前端静态站直接连后端，需要本地/轻量代理把浏览器的 `/invocations` 转发到 `invoke_agent_runtime`，或在后端另开一个公开 API 网关入口。
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 

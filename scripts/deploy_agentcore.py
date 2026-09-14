@@ -24,12 +24,15 @@ Run from the repository root:
 from __future__ import annotations
 
 import base64
+import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 REQUIRED_ENV = ("AGENTCORE_ROLE_ARN",)
@@ -109,20 +112,16 @@ def main() -> None:
         account_id = boto3.client("sts", region_name=region).get_caller_identity()["Account"]
 
     repository = os.environ.get("ECR_REPOSITORY", "fly-weight-lab-agent")
-    agent_name = os.environ.get("AGENT_NAME", "fly-weight-lab")
+    agent_name = os.environ.get("AGENT_NAME", "flyweight_lab")
     image_tag = os.environ.get("IMAGE_TAG", "latest")
 
-    registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
     local_image = f"{repository}:{image_tag}"
-    remote_image = f"{registry}/{repository}:{image_tag}"
 
     build_arm64_image(local_image)
 
     repository_uri = ensure_repository(region, repository)
-    if repository_uri != remote_image:
-        raise SystemExit(
-            f"ECR repository URI mismatch: expected {remote_image}, got {repository_uri}"
-        )
+    registry = f"{account_id}.dkr.ecr.{region}.amazonaws.com"
+    remote_image = f"{repository_uri}:{image_tag}"
 
     password = ecr_login_password(region)
 
@@ -140,21 +139,57 @@ def main() -> None:
     run(["docker", "push", remote_image])
 
     client = boto3.client("bedrock-agentcore-control", region_name=region)
-    response = client.create_agent_runtime(
-        agentRuntimeName=agent_name,
-        description="Fly Weight-Lab background weight-loss agent",
-        agentRuntimeArtifact={
-            "containerConfiguration": {
-                "containerUri": remote_image,
-            }
-        },
-        roleArn=role_arn,
-        networkConfiguration={"networkMode": "PUBLIC"},
-        protocolConfiguration={"serverProtocol": "HTTP"},
-        environmentVariables={"PYTHONUNBUFFERED": "1"},
-    )
-    print("Agent runtime created:")
-    print(response.get("agentRuntimeArn", response))
+    try:
+        response = client.create_agent_runtime(
+            agentRuntimeName=agent_name,
+            description="Fly Weight-Lab background weight-loss agent",
+            agentRuntimeArtifact={
+                "containerConfiguration": {
+                    "containerUri": remote_image,
+                }
+            },
+            roleArn=role_arn,
+            networkConfiguration={"networkMode": "PUBLIC"},
+            protocolConfiguration={"serverProtocol": "HTTP"},
+            environmentVariables={"PYTHONUNBUFFERED": "1"},
+        )
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] == "ConflictException":
+            runtimes = client.list_agent_runtimes()
+            match = next(
+                (
+                    item
+                    for item in runtimes.get("agentRuntimes", [])
+                    if item.get("agentRuntimeName") == agent_name
+                ),
+                None,
+            )
+            if match is None:
+                raise
+            print("Reusing existing runtime:")
+            print(json.dumps(match, default=str, indent=2))
+            return
+        raise
+
+    runtime_id = response["agentRuntimeId"]
+    print("Agent runtime requested:")
+    print(json.dumps(response, default=str, indent=2))
+
+    for _ in range(60):
+        state = client.get_agent_runtime(agentRuntimeId=runtime_id)
+        status = state.get("status")
+        print(f"  runtime status: {status}")
+        if status == "READY":
+            print("Agent runtime is READY:")
+            print(json.dumps(state, default=str, indent=2))
+            return
+        if status in {"CREATE_FAILED", "UPDATE_FAILED", "FAILED"}:
+            print("Agent runtime failed:")
+            print(json.dumps(state, default=str, indent=2))
+            raise SystemExit("Agent runtime creation failed")
+        time.sleep(10)
+
+    raise SystemExit("Timed out waiting for Agent runtime to become READY")
 
 
 if __name__ == "__main__":
