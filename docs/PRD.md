@@ -98,10 +98,11 @@
 - `WeightLossAgent` 后台循环：每周摄入体重、重跑蜂群，只在平台期新出现或冠军方案真实改变时输出一个决策。
 - `WeightLossAgent` 状态持久化：当前方案、体重历史、平台期记忆可保存为 JSON 并恢复，重启不丢实验。
 - `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 可成功构造 `strands.Agent`；`run_swarm` / `is_plateau` 已暴露成 Strands 工具。
+- `agentcore/main.py` 已用 `BedrockAgentCoreApp` 注册 `main` 入口，`/invocations` 与 `/ping` 路由本地验证通过。
 
 下一阶段：
 
-- 补充 Bedrock/AgentCore 部署配置，验证真实模型调用。
+- 使用真实 AWS 凭据完成一次 AgentCore 部署并验证模型调用。
 - 将 demo 输出固化成正式分镜和进化看板视觉。
 
 已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。

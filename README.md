@@ -82,6 +82,7 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
 - **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
 - **Verified SDK path** — `pip install -r requirements-strands.txt`, then `build_strands_agent()` constructs a `strands.Agent` without needing live AWS calls.
+- **AgentCore runtime entrypoint** (`agentcore/main.py`) wraps the Strands agent in `BedrockAgentCoreApp`; `/invocations` and `/ping` routes register successfully.
 
 Runnable demos:
 
@@ -99,7 +100,10 @@ Verification:
 - [`docs/PRD.md`](./docs/PRD.md) — product requirements.
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
 - [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
+- [`docs/AGENTCORE_DEPLOYMENT.md`](./docs/AGENTCORE_DEPLOYMENT.md) — AWS Bedrock AgentCore deployment guide.
 - [`requirements-strands.txt`](./requirements-strands.txt) — optional Strands Agents SDK integration.
+- [`requirements-agentcore.txt`](./requirements-agentcore.txt) — optional AgentCore runtime dependency.
+- [`agentcore/`](./agentcore) — deployable AgentCore runtime entrypoint.
 - [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
 - [`tests/`](./tests) — automated verification.

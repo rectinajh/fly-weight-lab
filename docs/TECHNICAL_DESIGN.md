@@ -77,6 +77,13 @@
 - 默认 Bedrock provider 需要 AWS 凭据与模型访问权限；本地核心演示不依赖它。
 - 已验证：`pip install -r requirements-strands.txt` 后，`build_strands_agent()` 返回 `strands.Agent` 实例，构造阶段无需调用 AWS。
 
+AgentCore 部署入口：
+
+- `agentcore/main.py` 使用 `BedrockAgentCoreApp` 包装 Strands agent。
+- `@app.entrypoint` 接收 `{"prompt": "..."}`，调用 `agent.invoke_async(prompt)` 并返回可序列化结果。
+- AgentCore Runtime 自动提供 `POST /invocations` 与 `GET /ping`；本地已确认 routes 与 handler 注册成功。
+- 完整部署步骤见 `docs/AGENTCORE_DEPLOYMENT.md`。
+
 ### 2.5 进化看板
 
 - 展示蜂群代数、种群分布、红叉/绿勾、冠军方案家谱。
@@ -171,6 +178,7 @@ fitness = w1*total_loss + w2*adherence
 | `flylab/agent.py` | 冠军方案翻译成一个决策 + 一句理由 |
 | `flylab/agent_loop.py` | 后台 agent 循环 + 状态保存/恢复（JSON 持久化） |
 | `flylab/strands_agent.py` | 可选 Strands Agents SDK 桥接 |
+| `agentcore/main.py` | Bedrock AgentCore Runtime 部署入口 |
 | `examples/demo_agent.py` | 12 周后台 agent 演示 |
 | `tests/test_evolution.py` | 自动验证：基因型、蜂群、连接组、后台循环安静性 |
 
