@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements-local.txt
 COPY flylab ./flylab
 COPY agentcore ./agentcore
 COPY data/mb_summary.json ./data/mb_summary.json
+COPY data/real_users ./data/real_users
 
 EXPOSE 8080
 

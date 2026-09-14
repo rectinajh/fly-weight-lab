@@ -12,6 +12,7 @@ Optional model-driven payload:
 
 from __future__ import annotations
 
+import csv
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 _agent = None
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
 def _get_agent():
@@ -60,6 +62,53 @@ def _default_current() -> Fly:
         refeed_schedule="none",
         step_target=10000,
     )
+
+
+def _connectome_dict() -> dict[str, Any]:
+    params = load_params()
+    return {
+        "source": params.source,
+        "n_kenyon": params.n_kenyon,
+        "n_dan": params.n_dan,
+        "n_mbon": params.n_mbon,
+        "kc_mbon_convergence": round(params.kc_mbon_convergence, 1),
+        "dan_mbon_convergence": round(params.dan_mbon_convergence, 1),
+        "reward_punishment_ratio": round(params.reward_punishment_ratio, 2),
+        "context_recurrence_ratio": round(params.context_recurrence_ratio, 4),
+    }
+
+
+def _serialize_evolution(history: list) -> dict[str, Any]:
+    generations = []
+    for generation, best, mean, scores in history:
+        ordered = sorted(scores)
+        median = ordered[len(ordered) // 2]
+        farm = "".join("1" if score >= median else "0" for score in scores)
+        generations.append(
+            {"generation": generation, "best": best, "mean": mean, "farm": farm}
+        )
+    return {"generations": generations}
+
+
+def _load_demo_records(user_id: str) -> tuple[list, list, dict | None]:
+    from flylab.calibration import load_records
+
+    weight_path = DATA_DIR / "real_users" / f"{user_id}_weight.csv"
+    if not weight_path.exists():
+        return [], [], None
+    weight_records = load_records(weight_path)
+    activity_records: list[dict] = []
+    activity_path = DATA_DIR / "real_users" / f"{user_id}_activity.csv"
+    if activity_path.exists():
+        with activity_path.open(newline="", encoding="utf-8") as handle:
+            activity_records = list(csv.DictReader(handle))
+        activity_records.sort(key=lambda row: row.get("date", ""))
+    source = {
+        "path": f"data/real_users/{user_id}",
+        "zenodo": "10.5281/zenodo.53894",
+        "license": "CC-BY-4.0",
+    }
+    return weight_records, activity_records, source
 
 
 def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
@@ -89,6 +138,8 @@ def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
             "adherence": round(twin.adherence(champion), 3),
             "binge_risk": round(twin.binge_risk(champion), 3),
             "safety": safety.as_dict(),
+            "connectome": _connectome_dict(),
+            "evolution": _serialize_evolution(result.history),
         }
 
 
@@ -114,8 +165,15 @@ def _run_business_flow_payload(payload: dict[str, Any]) -> dict[str, Any]:
     user_id = str(payload.get("user_id", "uploaded_user"))
     weight_records = payload.get("weight_records")
     activity_records = payload.get("activity_records", [])
-    if not isinstance(weight_records, list) or not weight_records:
-        return {"error": "weight_records must be a non-empty list"}
+
+    demo_source = None
+    if isinstance(weight_records, list) and weight_records:
+        weight_records = weight_records
+    else:
+        weight_records, activity_records, demo_source = _load_demo_records(user_id)
+        if not weight_records:
+            return {"error": f"no real records found for user_id={user_id}"}
+
     if not isinstance(activity_records, list):
         return {"error": "activity_records must be a list"}
 
@@ -129,6 +187,9 @@ def _run_business_flow_payload(payload: dict[str, Any]) -> dict[str, Any]:
         memory_root=Path("runs/memory"),
         reset_memory=True,
     )
+    report["connectome"] = _connectome_dict()
+    if demo_source:
+        report["data_source"] = demo_source
     return report
 
 
@@ -150,7 +211,7 @@ async def main(payload: dict[str, Any]) -> dict[str, Any]:
                 return {"result": result.to_dict()}
             return {"result": str(result)}
 
-        if payload.get("mode") == "business_flow":
+        if payload.get("mode") in {"business_flow", "demo"}:
             return _run_business_flow_payload(payload)
 
         return _run_local_swarm(payload)

@@ -94,7 +94,7 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Local-first default** — `POST /invocations` with `{}` runs the real swarm without a model or AWS credentials.
 - **Optional model-driven path** — `POST /invocations` with `{"mode":"agent","prompt":"..."}` calls the Strands agent.
 - **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
-- **Live demo UI** (`web/`) is a Vercel-ready static frontend that can upload a real CSV and drive the `/business-flow` endpoint.
+- **Live demo UI** (`web/`) is a Vercel-ready frontend that boots the real AgentCore runtime, ships with two real Fitbit users preloaded (no CSV required), and renders the swarm evolution, background-agent timeline, champion protocol, one surfaced decision, and a two-user personalization comparison.
 
 Public demo: [fly-weight-lab-demo.vercel.app](https://fly-weight-lab-demo.vercel.app)
 

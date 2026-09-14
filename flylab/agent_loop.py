@@ -50,6 +50,8 @@ class WeightLossAgent:
         self.last_surface_week: int | None = None
         self.last_fingerprint: tuple | None = None
         self.last_escalation_surfaced = False
+        self.last_champion: Fly | None = None
+        self.last_evolution: list | None = None
         self.history: list[dict] = []
 
     def ingest(self, weight_kg: float) -> None:
@@ -71,14 +73,15 @@ class WeightLossAgent:
             round(fly.sleep_target, 1),
         )
 
-    def _run_swarm(self) -> tuple[Fly, float]:
+    def _run_swarm(self) -> tuple[Fly, float, list]:
         result = Swarm(
             self.twin,
             population_size=self.config.population_size,
             generations=self.config.generations,
             seed=self.config.seed,
         ).run()
-        return result.best_fly, result.best_score
+        self.last_evolution = result.history
+        return result.best_fly, result.best_score, result.history
 
     def tick(self, week: int) -> Decision | None:
         """Run one background tick. Returns a Decision only if worth surfacing."""
@@ -92,11 +95,12 @@ class WeightLossAgent:
                 self.twin.profile.metabolic_adaptation + self.config.adapt_on_plateau,
             )
 
-        champion, _ = self._run_swarm()
+        champion, _, _ = self._run_swarm()
         safety = evaluate_protocol(champion, self.profile)
         if not safety.safe:
             champion = safe_champion(champion, self.profile)
             safety = evaluate_protocol(champion, self.profile)
+        self.last_champion = champion
         champion_fp = self._fingerprint(champion)
         current_fp = self._fingerprint(self.current)
 
@@ -136,6 +140,30 @@ class WeightLossAgent:
             }
         )
         return decision
+
+    def evolution_summary(self) -> dict:
+        """Return a compact, frontend-friendly view of the last swarm run."""
+        if not self.last_evolution:
+            return {"generations": []}
+
+        generations = []
+        for generation, best, mean, scores in self.last_evolution:
+            ordered = sorted(scores)
+            median = ordered[len(ordered) // 2]
+            farm = "".join("1" if score >= median else "0" for score in scores)
+            generations.append(
+                {
+                    "generation": generation,
+                    "best": best,
+                    "mean": mean,
+                    "farm": farm,
+                }
+            )
+        return {
+            "population_size": self.config.population_size,
+            "generation_count": self.config.generations,
+            "generations": generations,
+        }
 
     def state_dict(self) -> dict:
         """Return a JSON-serializable snapshot of the agent's live state."""

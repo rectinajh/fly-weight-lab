@@ -6,6 +6,7 @@ is implemented once and exercised through the same code path in every demo.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
@@ -206,4 +207,11 @@ def run_business_flow(
 
     report["memory"] = memory.load(user_id)
     report["agent_state"] = agent.state_dict()
+    report["champion"] = asdict(agent.last_champion) if agent.last_champion else asdict(agent.current)
+    report["evolution"] = agent.evolution_summary()
+    report["surfaced_weeks"] = [
+        entry["week"] for entry in report["flow"] if entry.get("decision")
+    ]
+    decisions = [entry["decision"] for entry in report["flow"] if entry.get("decision")]
+    report["decision"] = decisions[-1] if decisions else None
     return report

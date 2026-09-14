@@ -1,56 +1,106 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fly Weight-Lab</title>
+    <meta name="theme-color" content="#050a12" />
+    <title>Fly Weight-Lab · 一万只赛博果蝇替你失败</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
+    <canvas id="swarm-bg" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+
     <main>
-      <header>
-        <p class="eyebrow">Agents for Humans · Everyday Agents</p>
-        <h1>Fly Weight-Lab</h1>
-        <p class="lede">Your body runs one experiment. The flies run ten thousand.</p>
+      <header class="hero">
+        <p class="eyebrow">Agents for Humans · Everyday Agents · AWS Bedrock AgentCore × Strands</p>
+        <h1>FLY <span>WEIGHT-LAB</span></h1>
+        <p class="lede">你的身体只跑一个实验，赛博果蝇替你跑一万个。</p>
+        <p class="sub">真实果蝇蘑菇体连接组 · 行为数字孪生 · 只在真正有决定时打扰你</p>
       </header>
 
-      <section class="control">
-        <label for="backend">Backend URL</label>
-        <input id="backend" value="/api" placeholder="/api or http://localhost:8080" />
-        <div class="buttons">
-          <button id="runLocal">Run local agent</button>
-          <button id="runAgent">Run Strands agent</button>
-          <button id="runBusiness">Run real CSV flow</button>
+      <section class="connectome-strip" aria-label="真实果蝇连接组">
+        <div class="stat">
+          <strong id="statKenyon">4064</strong>
+          <span>Kenyon cells · 情境</span>
+        </div>
+        <div class="stat">
+          <strong id="statDan">340</strong>
+          <span>DANs · 奖赏/惩罚</span>
+        </div>
+        <div class="stat">
+          <strong id="statMbon">97</strong>
+          <span>MBONs · 决策</span>
+        </div>
+        <div class="stat accent">
+          <strong id="statRatio">2.56:1</strong>
+          <span>奖赏 : 惩罚 · 真实线路</span>
         </div>
       </section>
 
-      <section class="control">
-        <label for="weightFile">Real Fitbit weight CSV</label>
-        <input id="weightFile" type="file" accept=".csv,text/csv" />
-        <label for="activityFile">Optional Fitbit activity CSV</label>
-        <input id="activityFile" type="file" accept=".csv,text/csv" />
+      <section class="console glass">
+        <div class="console-top">
+          <div class="status-pill">
+            <span class="dot" id="pingDot"></span>
+            <span id="pingText">正在连接 AgentCore…</span>
+          </div>
+          <span class="runtime-tag">真实 Bedrock AgentCore Runtime</span>
+        </div>
+
+        <div class="picker">
+          <span class="picker-label">用真实 Fitbit 数据体验</span>
+          <div class="user-chips">
+            <button class="user-chip active" data-user="6962181067">
+              <b>真实用户 A</b>
+              <small>14 条体重记录 · 3 周</small>
+            </button>
+            <button class="user-chip" data-user="8877689391">
+              <b>真实用户 B</b>
+              <small>9 条体重记录 · 2 周</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="runDemo" class="primary">
+            <span class="btn-icon">⚡</span>
+            启动后台 agent
+          </button>
+          <button id="runSwarm" class="ghost">
+            <span class="btn-icon">🧬</span>
+            只看蜂群进化
+          </button>
+        </div>
+
+        <details class="advanced">
+          <summary>导入我自己的 Fitbit 导出（可选，非必需）</summary>
+          <div class="upload-row">
+            <label for="weightFile">体重 CSV</label>
+            <input id="weightFile" type="file" accept=".csv,text/csv" />
+            <label for="activityFile">活动 CSV（可选）</label>
+            <input id="activityFile" type="file" accept=".csv,text/csv" />
+            <button id="runUpload" class="ghost small">跑我的数据</button>
+          </div>
+        </details>
       </section>
 
-      <section class="status">
-        <div><span class="dot" id="pingDot"></span><span id="pingText">Not checked</span></div>
-        <div id="error" class="error"></div>
+      <section id="errorBox" class="error hidden"></section>
+
+      <section id="loading" class="loading hidden">
+        <div class="loader-ring"></div>
+        <p id="loadingText">果蝇正在后台跑一万次实验…</p>
       </section>
 
-      <section class="grid">
-        <article class="card">
-          <h2>Champion protocol</h2>
-          <pre id="champion">Run the local agent to see the evolved protocol.</pre>
-        </article>
-        <article class="card">
-          <h2>Agent decision</h2>
-          <pre id="decision">Run the Strands agent to see one surfaced decision.</pre>
-        </article>
-        <article class="card wide">
-          <h2>Real business flow</h2>
-          <pre id="business">Upload a real weight CSV to calibrate, run background ticks, surface a decision, and persist feedback.</pre>
-        </article>
-      </section>
+      <section id="dashboard" class="dashboard hidden"></section>
+
+      <footer class="footer">
+        <span>真实数据 · Zenodo 10.5281/zenodo.53894 (CC-BY-4.0)</span>
+        <span>真实连接组 · Janelia MaleCNS</span>
+        <span>AWS Bedrock AgentCore · Strands Agents SDK</span>
+      </footer>
     </main>
+
+    <script src="./fly.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
