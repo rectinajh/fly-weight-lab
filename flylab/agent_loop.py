@@ -7,7 +7,9 @@ materially changes (a newly detected plateau, or a better champion protocol).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 from .agent import Decision, surface_decision
 from .connectome import ConnectomeParams, load_params
@@ -118,3 +120,56 @@ class WeightLossAgent:
             }
         )
         return decision
+
+    def state_dict(self) -> dict:
+        """Return a JSON-serializable snapshot of the agent's live state."""
+        return {
+            "profile": asdict(self.profile),
+            "current": asdict(self.current),
+            "config": asdict(self.config),
+            "weights": self.weights,
+            "prev_plateau": self.prev_plateau,
+            "last_surface_week": self.last_surface_week,
+            "last_fingerprint": (
+                list(self.last_fingerprint) if self.last_fingerprint is not None else None
+            ),
+            "history": self.history,
+        }
+
+    def save_state(self, path: str | Path) -> Path:
+        """Persist the agent state to a JSON file and return its path."""
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(self.state_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        return target
+
+    @classmethod
+    def from_state(
+        cls,
+        state: dict,
+        connectome: ConnectomeParams | None = None,
+    ) -> "WeightLossAgent":
+        """Restore an agent from a snapshot without rerunning the swarm."""
+        agent = cls(
+            profile=UserProfile(**state["profile"]),
+            current=Fly(**state["current"]),
+            config=AgentConfig(**state["config"]),
+            connectome=connectome if connectome is not None else load_params(),
+        )
+        agent.weights = list(state.get("weights", [agent.weights[0]]))
+        agent.prev_plateau = bool(state.get("prev_plateau", False))
+        agent.last_surface_week = state.get("last_surface_week")
+        fingerprint = state.get("last_fingerprint")
+        agent.last_fingerprint = tuple(fingerprint) if fingerprint is not None else None
+        agent.history = list(state.get("history", []))
+        return agent
+
+    @classmethod
+    def load_state(
+        cls,
+        path: str | Path,
+        connectome: ConnectomeParams | None = None,
+    ) -> "WeightLossAgent":
+        """Load a persisted agent state from a JSON file."""
+        raw = Path(path).read_text(encoding="utf-8")
+        return cls.from_state(json.loads(raw), connectome=connectome)

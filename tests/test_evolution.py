@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -91,6 +92,43 @@ class TestAgentLoop(unittest.TestCase):
 
         self.assertGreaterEqual(len(surfaced_weeks), 1)
         self.assertLess(len(surfaced_weeks), 12)
+
+    def test_state_roundtrip_preserves_live_context(self):
+        profile = UserProfile(
+            name="test",
+            start_weight_kg=88.0,
+            adherence_base=0.6,
+            binge_sensitivity=0.6,
+            metabolic_adaptation=0.5,
+            maintenance_kcal=2300.0,
+        )
+        current = Fly(
+            calorie_target=1500,
+            protein_pct=0.40,
+            carb_pct=0.25,
+            meal_window=8,
+            meal_count=3,
+            late_night_rule=False,
+            workout_freq=5,
+            workout_type="cardio",
+            sleep_target=7.0,
+            refeed_schedule="none",
+            step_target=10000,
+        )
+        agent = WeightLossAgent(profile, current, connectome=load_params())
+        agent.ingest(87.8)
+        agent.ingest(87.7)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "agent_state.json"
+            agent.save_state(path)
+            restored = WeightLossAgent.load_state(path, connectome=load_params())
+
+        self.assertEqual(restored.current, agent.current)
+        self.assertEqual(restored.profile, agent.profile)
+        self.assertEqual(restored.weights, agent.weights)
+        self.assertEqual(restored.last_surface_week, agent.last_surface_week)
+        self.assertEqual(restored.last_fingerprint, agent.last_fingerprint)
 
 
 if __name__ == "__main__":

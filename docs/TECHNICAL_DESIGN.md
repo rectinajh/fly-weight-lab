@@ -68,6 +68,7 @@
 - 通过「冠军方案指纹」判断是否真的变化；通过短窗口体重差检测平台期。
 - 新检测到平台期时给行为孪生的 `metabolic_adaptation` 加 0.05，迫使下一轮搜索换新杠杆，避免重复推同一条建议。
 - 只有 `new_plateau or changed` 且达到重推间隔时才调用决策面，其余周安静。
+- `state_dict()` / `save_state()` / `load_state()` 把当前方案、体重历史、平台期记忆和最后重推周保存为 JSON，重启后可无缝继续。
 
 可选 Strands 桥接：
 
@@ -167,7 +168,7 @@ fitness = w1*total_loss + w2*adherence
 | `flylab/plateau.py` | 平台期检测 |
 | `flylab/connectome.py` | Janelia MaleCNS 蘑菇体参数加载与连接组构建 |
 | `flylab/agent.py` | 冠军方案翻译成一个决策 + 一句理由 |
-| `flylab/agent_loop.py` | 后台 agent 循环，只在真变化时打扰 |
+| `flylab/agent_loop.py` | 后台 agent 循环 + 状态保存/恢复（JSON 持久化） |
 | `flylab/strands_agent.py` | 可选 Strands Agents SDK 桥接 |
 | `examples/demo_agent.py` | 12 周后台 agent 演示 |
 | `tests/test_evolution.py` | 自动验证：基因型、蜂群、连接组、后台循环安静性 |

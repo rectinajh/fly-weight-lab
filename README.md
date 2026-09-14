@@ -79,6 +79,7 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Real connectome grounding** (`flylab/connectome.py`, `data/mb_summary.json`) feeds the Janelia mushroom-body prior into binge-risk coupling.
 - **Decision surface** (`flylab/agent.py`) turns a champion protocol into one action plus one reason.
 - **Background agent loop** (`flylab/agent_loop.py`) ingests weekly weights, reruns the swarm, and surfaces a decision only when a plateau appears or the champion protocol genuinely changes.
+- **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
 - **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
 
 Runnable demos:
