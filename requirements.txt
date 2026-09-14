@@ -2,4 +2,4 @@ numpy>=1.24
 # Optional, for the evolution chart:
 # matplotlib>=3.7
 # Optional, for the model-driven agent layer (needs AWS credentials for Bedrock):
-# strands-agents
+# Use `pip install -r requirements-strands.txt` for the verified SDK integration.

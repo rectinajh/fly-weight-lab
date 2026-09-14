@@ -75,6 +75,7 @@
 - `flylab/strands_agent.py` 的 `build_strands_agent()` 在安装 `strands-agents` 后可用。
 - 暴露 `run_swarm` 与 `is_plateau` 两个工具，让模型驱动 agent 调用本项目的蜂群与平台期检测。
 - 默认 Bedrock provider 需要 AWS 凭据与模型访问权限；本地核心演示不依赖它。
+- 已验证：`pip install -r requirements-strands.txt` 后，`build_strands_agent()` 返回 `strands.Agent` 实例，构造阶段无需调用 AWS。
 
 ### 2.5 进化看板
 

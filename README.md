@@ -81,6 +81,7 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Background agent loop** (`flylab/agent_loop.py`) ingests weekly weights, reruns the swarm, and surfaces a decision only when a plateau appears or the champion protocol genuinely changes.
 - **State persistence** (`WeightLossAgent.save_state` / `load_state`) snapshots the current protocol, weight history, and plateau memory as JSON, so a restart does not lose the user's experiment.
 - **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
+- **Verified SDK path** — `pip install -r requirements-strands.txt`, then `build_strands_agent()` constructs a `strands.Agent` without needing live AWS calls.
 
 Runnable demos:
 
@@ -98,6 +99,7 @@ Verification:
 - [`docs/PRD.md`](./docs/PRD.md) — product requirements.
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
 - [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
+- [`requirements-strands.txt`](./requirements-strands.txt) — optional Strands Agents SDK integration.
 - [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
 - [`tests/`](./tests) — automated verification.
