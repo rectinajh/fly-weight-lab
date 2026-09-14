@@ -1,24 +1,39 @@
-# Fly Weight-Lab: 让一万只赛博果蝇替你失败
+# Fly Weight-Lab: letting ten thousand cyber flies fail for you
 
 **Agents for Humans Hackathon · Everyday Agents**
 
-## 我为什么做这个
+## Why I built this
 
-减脂是我见过最普遍、最容易让人自我怀疑的目标。不是不知道要少吃多动，而是每个人只有一副身体，没法同时试一万种方案。一次失败就是几周时间，外加一次「是我没毅力」的自我否定。
+Weight loss is the most universal goal I know that also makes people doubt
+themselves the most. The problem is not that people don't know to eat less and
+move more. It is that everyone has exactly one body, so nobody can try ten
+thousand protocols at once. Every failure costs weeks of progress plus one more
+round of "I guess I just have no willpower."
 
-我想做的是一个真正在后台工作的 agent：它替你承担试错成本，只在真正需要你拍板的时候冒出来，而且每次只给一个决定。
+I wanted to build an agent that genuinely works in the background: it absorbs the
+cost of failed experiments, it only appears when a real decision is needed, and
+even then it gives you exactly one decision.
 
-## 它怎么工作
+## How it works
 
-Fly Weight-Lab 用三件事解决这个问题：
+Fly Weight-Lab solves this with three pieces.
 
-1. **行为数字孪生**。它不假装模拟代谢，而是根据你的真实日志拟合「你能不能坚持、身体大概怎么反应」。
-2. **果蝇蜂群**。每只果蝇是一套减脂方案，在数字孪生里跑几千次模拟未来，弱方案淘汰，强方案繁殖、交叉、变异，最后只留下一个冠军。
-3. **真实果蝇连接组先验**。项目接入了 Janelia MaleCNS 蘑菇体连接组：4064 个 Kenyon cell、340 个奖赏/惩罚神经元、97 个决策神经元。真实线路里奖赏与惩罚的比例约为 2.56:1，所以只靠惩罚和限制的激进节食，会触发更强的反弹压力。
+1. **A behavioral digital twin.** It does not pretend to simulate metabolism. It
+   fits "can you actually sustain this, and what does your body roughly do" from
+   your real logs.
+2. **A fruit-fly swarm.** Each fly is a candidate protocol. It runs thousands of
+   simulated futures through the twin. Weak protocols are culled; strong ones
+   breed, cross over, and mutate until one champion remains.
+3. **A real fruit-fly connectome prior.** The project wires in the Janelia
+   MaleCNS mushroom body: 4,064 Kenyon cells, 340 reward and punishment neurons,
+   97 decision neurons. Real wiring has reward outweighing punishment by about
+   2.56 to 1, so a restriction-only crash diet triggers stronger rebound
+   pressure than a hand-tuned model would assume.
 
-## Strands Agents SDK 用在哪里
+## Where the Strands Agents SDK fits
 
-agent 的主循环由 Strands 编排，工具被拆成六个窄函数：
+The agent loop is orchestrated by Strands, and the capabilities are split into
+six narrow tools:
 
 - `get_user_context`
 - `detect_plateau`
@@ -27,18 +42,31 @@ agent 的主循环由 Strands 编排，工具被拆成六个窄函数：
 - `surface_decision`
 - `record_feedback`
 
-这样模型不是调用一个黑盒函数，而是在理解上下文、判断平台期、模拟方案、进化冠军、生成决策和记录反馈之间自行组合。默认离线路径用一个确定性的 MockModel 跑完整 tool-call 循环，不需要 API key 也能演示；换成 Ollama、OpenAI、Anthropic 或 Bedrock 都只需要改环境变量。
+The model is not calling one black-box function. It composes these tools itself:
+read context, judge the plateau, simulate candidates, evolve a champion, produce
+a decision, record feedback. The default offline path runs the full tool-call
+loop against a deterministic MockModel, so it demos with no API key. Switching to
+Ollama, OpenAI, Anthropic, or Bedrock is an environment variable.
 
-## 安全边界
+## Safety boundaries
 
-项目有硬性安全护栏：热量不能低于安全下限，蛋白比例、睡眠和进食窗口都有硬约束；遇到体重异常或暴食风险极高的画像，agent 只会建议去咨询专业人士，不做诊断或处方。
+The project has hard guardrails. Calories cannot fall below a weight-based floor.
+Protein share, sleep, and eating window all have hard bounds. When a profile
+looks clinically out of scope or carries very high binge risk, the agent only
+suggests talking to a professional. It never diagnoses and never prescribes.
 
-## 一个我希望评委记住的镜头
+## The shot I want judges to remember
 
-12 周里，agent 只冒出来 3 次，其余 9 周安静。它不是在推送通知，而是在后台消化噪音，只在平台期或冠军方案真正改变时给你一个决定。
+Across the whole window the agent comes up only a few times and stays quiet the
+rest. It is not pushing notifications. It is absorbing noise in the background
+and giving you one decision when a plateau appears or the champion protocol
+genuinely changes.
 
-**你的身体只跑一个冠军方案，果蝇替你跑一万个失败实验。**
+**Your body runs one champion protocol. The flies run ten thousand failed
+experiments.**
 
-代码仓库：https://github.com/rectinajh/fly-weight-lab
+Repository: https://github.com/rectinajh/fly-weight-lab
+
+Live demo: https://fly-weight-lab-demo.vercel.app
 
 `#AgentsforHumans`

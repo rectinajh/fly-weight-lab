@@ -1,67 +1,69 @@
-# AgentCore 部署说明 — Fly Weight-Lab
+# AgentCore Deployment — Fly Weight-Lab
 
-> 状态：真实 AgentCore Runtime 已部署到 AWS 并进入 READY，数据面调用已实测返回真实蜂群结果。
+> Status: a real Amazon Bedrock AgentCore Runtime is deployed to AWS, is
+> `READY`, and has been invoked through the data plane returning real swarm
+> results. Nothing in this document is aspirational.
 
-## 1. 为什么需要 AgentCore
+## 1. Why AgentCore
 
-黑客松的 Technical Implementation 会看重 agent 是否真正部署到 AWS Bedrock AgentCore Runtime，而不是只停留在本地脚本。AgentCore 提供：
+Hackathon judging for Technical Implementation looks for an agent that is
+actually deployed to Amazon Bedrock AgentCore Runtime rather than only running
+as a local script. AgentCore gives us:
 
-- `POST /invocations` 和 `GET /ping` 标准运行时接口。
-- 托管运行、鉴权、指标、追踪和会话管理。
-- 与 Strands Agents SDK 的一等集成。
+- The standard runtime contract: `POST /invocations` and `GET /ping`.
+- Managed execution, auth, metrics, tracing, and session management.
+- First-class integration with the Strands Agents SDK.
 
-## 2. 本仓库已准备的内容
+## 2. What this repository already contains
 
-- `agentcore/main.py`：`BedrockAgentCoreApp` 入口，包装 `build_strands_agent()`。
-- 默认 local 模式：`POST /invocations` 发 `{}` 直接跑蜂群。
-- 可选 Strands 模式：`{"mode":"agent","prompt":"..."}`，默认用离线 MockModel。
-- `flylab/strands_agent.py`：暴露 `get_user_context`、`detect_plateau`、`simulate_candidate`、`evolve_champion`、`surface_decision`、`record_feedback` 六个 Strands 工具。
-- `requirements-strands.txt`：`strands-agents>=1.55`。
-- `requirements-agentcore.txt`：`bedrock-agentcore>=1.23`。
-- `Dockerfile`：linux/arm64 容器镜像。
-- `scripts/deploy_agentcore.py`：ECR 构建/推送 + `create_agent_runtime`。
+- `agentcore/main.py` — `BedrockAgentCoreApp` entrypoint wrapping the swarm and
+  the Strands agent.
+- Default local mode: `POST /invocations` with `{}` runs the swarm directly.
+- Demo/business mode: `{"mode":"demo","user_id":"..."}` runs the real-data
+  product loop. With no `weight_records` supplied it loads the preloaded real
+  Fitbit users baked into the image.
+- Optional model mode: `{"mode":"agent","prompt":"..."}` runs the Strands
+  tool-call loop (deterministic MockModel by default).
+- `flylab/strands_agent.py` — six narrow Strands tools: `get_user_context`,
+  `detect_plateau`, `simulate_candidate`, `evolve_champion`, `surface_decision`,
+  `record_feedback`.
+- `requirements-strands.txt` — `strands-agents>=1.55`.
+- `requirements-agentcore.txt` — `bedrock-agentcore>=1.23`.
+- `Dockerfile` — `linux/arm64` container image on port 8080.
+- `scripts/setup_agentcore_role.py` — create the runtime execution role.
+- `scripts/deploy_agentcore.py` — build, push to ECR, create or update the
+  runtime, then wait for `READY`.
+- `scripts/invoke_agentcore.py` — invoke the deployed runtime from the CLI.
 
-已本地验证：
+Local verification without AWS credentials:
 
 ```text
-import agentcore
-agentcore.app.handlers -> {'main'}
-routes -> ['/invocations', '/ping', '/business-flow', '/ws']
+GET  /ping            -> 200 {"status":"Healthy", ...}
+POST /invocations {}  -> 200 {"mode":"local","champion":{...},"fitness":..., ...}
 ```
 
-本地 HTTP 烟测（无 AWS 凭据）：
-
-```text
-GET  /ping -> 200 {"status":"Healthy", ...}
-POST /invocations {} -> 200 {"mode":"local","champion":{...},...}
-```
-
-默认请求不需要模型和 AWS。只有显式发送
-`{"mode":"agent","prompt":"..."}` 才会走 Strands 模型驱动路径。
-真实 CSV 业务流使用 `POST /business-flow`，本地也不依赖 AWS。
-
-前端 `web/` 可部署到 Vercel；后端已开启 CORS，浏览器可以直接调用公网或本地后端地址。
-
-## 3. 前置条件
+## 3. Prerequisites
 
 - Python 3.10+
-- AWS 账号与可用凭据（IAM / SSO / 环境变量）
-- Bedrock 模型访问权限（默认 Bedrock provider）
-- 可选：Docker、Finch 或 Podman（本地容器测试 / 高级部署）
-- Node.js（使用官方 AgentCore CLI 时）
+- An AWS account with usable credentials (IAM, SSO, or environment variables)
+- Bedrock model access if you enable the model-driven path
+- Docker (or Finch/Podman) for local container builds
+- Node.js only if you use the official AgentCore CLI
 
-## 4. 方法 A：官方 AgentCore CLI（推荐快速原型）
+## 4. Deploy with the repository scripts (verified path)
 
-官方文档建议用 CLI 创建、开发、部署 Strands agent。以你实际安装的 CLI 版本为准，核心流程通常是：
+Create the runtime execution role once:
 
-1. 安装官方 CLI（当前官方页以 Node 包 `@aws/agentcore` 为准；如 CLI 发布渠道变化，以 `strandsagents.com/docs/user-guide/deploy` 为准）。
-2. 创建项目，选择框架为 **Strands**、语言为 **Python**。
-3. 把本仓库的 `flylab/`、`agentcore/`、`data/mb_summary.json` 放进项目。
-4. 将 `agentcore/main.py` 作为入口点。
-5. 本地运行并测试 `/ping` 与 `/invocations`。
-6. 执行 `agentcore deploy` 部署到 AWS。
+```bash
+AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/setup_agentcore_role.py
+```
 
-也可以直接使用本仓库脚本（推荐，已实测跑通）：
+The role trusts `bedrock-agentcore.amazonaws.com` and carries a least-privilege
+inline policy for ECR image pull, CloudWatch Logs, X-Ray, CloudWatch metrics,
+Bedrock model invocation, and the AgentCore memory/identity actions the runtime
+needs.
+
+Then build, push, and deploy:
 
 ```bash
 export AWS_PROFILE=flyweight-agentcore
@@ -70,74 +72,120 @@ export AWS_REGION=us-east-1
 .venv/bin/python scripts/deploy_agentcore.py
 ```
 
-首次部署前需要先创建运行时执行角色：
+Notes:
 
-```bash
-AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/setup_agentcore_role.py
-```
+- The script derives the account ID from STS and the region from the boto3
+  session, or you can set `AWS_REGION` and `AWS_ACCOUNT_ID` explicitly.
+- If `docker buildx` is unavailable it falls back to
+  `docker build --platform linux/arm64`.
+- The script is idempotent: if a runtime with the same name exists it issues
+  `update_agent_runtime` and waits for the new version to reach `READY`.
+- The runtime name must match `[a-zA-Z][a-zA-Z0-9_]{0,47}`, which is why the
+  agent is named `flyweight_lab` and not `fly-weight-lab`.
 
-角色信任 `bedrock-agentcore.amazonaws.com`，内联策略包含 ECR 拉取、CloudWatch Logs、X-Ray、CloudWatch Metrics、Bedrock 模型调用与 AgentCore memory/identity 的最小权限。
+## 4a. Deployed runtime (current)
 
-脚本会自动从 AWS STS 推导账号 ID，从当前 boto3 session 推导区域；也可以显式设置 `AWS_REGION` 和 `AWS_ACCOUNT_ID`。
-如果本机没有 `docker buildx`，脚本会回退到 `docker build --platform linux/arm64`。
+| Field | Value |
+|---|---|
+| Runtime ARN | `arn:aws:bedrock-agentcore:us-east-1:032529260721:runtime/flyweight_lab-k3JItG63s2` |
+| Runtime ID | `flyweight_lab-k3JItG63s2` |
+| Version / status | `4` · `READY` |
+| Image | `032529260721.dkr.ecr.us-east-1.amazonaws.com/fly-weight-lab-agent:latest` |
+| Protocol | `HTTP` |
+| Network | `PUBLIC` |
+| Execution role | `arn:aws:iam::032529260721:role/flyweight-agentcore-runtime-role` |
 
-## 4a. 已部署的真实 Runtime
-
-当前生产运行时：
-
-- Runtime ARN：`arn:aws:bedrock-agentcore:us-east-1:032529260721:runtime/flyweight_lab-k3JItG63s2`
-- Runtime ID：`flyweight_lab-k3JItG63s2`
-- 状态：`READY`
-- 镜像：`032529260721.dkr.ecr.us-east-1.amazonaws.com/fly-weight-lab-agent:latest`
-- 协议：`HTTP`
-- 网络：`PUBLIC`
-- 执行角色：`arn:aws:iam::032529260721:role/flyweight-agentcore-runtime-role`
-
-已通过 Bedrock AgentCore 数据面实测：
+Verified through the AgentCore data plane:
 
 ```text
 POST /invocations (payload {})
--> 200 {"mode":"local","champion":{...},"fitness":...,"adherence":...,"safety":{...}}
+-> 200 {"mode":"local","champion":{...},"fitness":53.872,"adherence":0.607,"safety":{...}}
 ```
 
-说明容器内的 `/invocations`、`/ping` 入口和真实蜂群计算都在云端托管运行时中工作，而不是本地 mock。
+The `/invocations` and `/ping` entrypoints and the real swarm computation run
+inside the managed cloud runtime, not in a local mock.
 
-> 浏览器直连已通过 Vercel Serverless 代理打通：`web/api/invocations.js` 把浏览器的 `/api/invocations` 转发到 `invoke_agent_runtime`，`web/api/ping.js` 用控制面 `GetAgentRuntime` 做健康检查。前端默认后端地址为 `/api`，线上演示无需本地后端。
+Invoke it directly from a terminal:
 
-线上演示：https://fly-weight-lab-demo.vercel.app
+```bash
+AWS_PROFILE=flyweight-agentcore .venv/bin/python scripts/invoke_agentcore.py \
+  --runtime-arn arn:aws:bedrock-agentcore:us-east-1:032529260721:runtime/flyweight_lab-k3JItG63s2
+```
 
-代理使用 Vercel ↔ AWS OIDC 联合身份，不再使用长期 access key。浏览器函数通过 `@vercel/oidc-aws-credentials-provider` 换取短期 `sts:AssumeRoleWithWebIdentity` 凭据。
+## 4b. Browser access through the Vercel edge proxy
 
-需要的 Vercel Production 环境变量（值已写入 Vercel，不在仓库中）：
+The browser cannot SigV4-sign an AgentCore call, so the Vercel project ships two
+serverless functions:
 
-- `AWS_ROLE_ARN=arn:aws:iam::032529260721:role/flyweight-vercel-oidc-role`
-- `AWS_REGION=us-east-1`
-- `AGENTCORE_RUNTIME_ARN`
-- `AGENTCORE_RUNTIME_ID`
+| Function | Responsibility |
+|---|---|
+| `web/api/invocations.js` | Forward `/api/invocations` to `InvokeAgentRuntime` |
+| `web/api/ping.js` | Control-plane `GetAgentRuntime` health check |
 
-OIDC 侧由 [scripts/setup_vercel_oidc_role.py](../scripts/setup_vercel_oidc_role.py) 创建：
+Live demo: https://fly-weight-lab-demo.vercel.app
 
-- IAM OIDC provider：`oidc.vercel.com/rectinajhs-projects`
-- Audience：`https://vercel.com/rectinajhs-projects`
-- Trust 限定（production）：`project:fly-weight-lab` 与 `project:web` 两个项目
-- 权限仅 `bedrock-agentcore:InvokeAgentRuntime` 和 `bedrock-agentcore:GetAgentRuntime`，资源限定到当前 runtime ARN 及其 `runtime-endpoint/*` 子资源。
+### Authentication: Vercel ↔ AWS OIDC
 
-### GitHub 推送自动部署
+The proxy does not use long-lived AWS access keys. It uses
+`@vercel/oidc-aws-credentials-provider` to exchange the Vercel OIDC token for
+short-lived STS credentials via `sts:AssumeRoleWithWebIdentity`.
 
-连接到 GitHub 的 Vercel 项目是 `fly-weight-lab`，它的 Root Directory 设为 `web`，Framework 设为 `Other`。这样每次 push 到 `main` 都会重新构建真实前端（静态页 + `web/api/*` Serverless 代理），不会再触发 Python entrypoint 检测错误。该项目同样需要上面四个 Production 环境变量。
+Production environment variables on the Vercel project (values live in Vercel,
+never in the repository):
 
-> 常见坑：如果 Root Directory 停留在仓库根目录且 Framework 为 `Python`，Vercel 会尝试寻找 Python 入口并报 `No python entrypoint found`，提交状态就会显示红色失败——那其实是部署失败，不是 GitHub Actions。
+| Variable | Value |
+|---|---|
+| `AWS_ROLE_ARN` | `arn:aws:iam::032529260721:role/flyweight-vercel-oidc-role` |
+| `AWS_REGION` | `us-east-1` |
+| `AGENTCORE_RUNTIME_ARN` | the runtime ARN above |
+| `AGENTCORE_RUNTIME_ID` | `flyweight_lab-k3JItG63s2` |
 
-## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
+The OIDC side is created by
+[`scripts/setup_vercel_oidc_role.py`](../scripts/setup_vercel_oidc_role.py):
 
-AgentCore Runtime 要求：
+| Field | Value |
+|---|---|
+| Issuer | `https://oidc.vercel.com/rectinajhs-projects` |
+| Audience | `https://vercel.com/rectinajhs-projects` |
+| Trusted subjects | `project:fly-weight-lab` and `project:web`, production only |
+| Permissions | `bedrock-agentcore:InvokeAgentRuntime` and `bedrock-agentcore:GetAgentRuntime`, scoped to the runtime ARN and its `runtime-endpoint/*` resources |
 
-- 平台：`linux/arm64`
-- 端口：`8080`
-- 必需接口：`POST /invocations`、`GET /ping`
-- 镜像推送到 ECR
+The permission list matters: `InvokeAgentRuntime` via the default endpoint needs
+the `runtime-endpoint/DEFAULT` sub-resource, so granting only the bare runtime
+ARN fails. The script grants both.
 
-`BedrockAgentCoreApp` 已经自动提供两个接口。剩余步骤是打包、推送、创建 runtime，官方 Python 部署文档有完整示例。部署成功后用 Bedrock AgentCore 的调用接口发送：
+## 4c. GitHub-triggered deploys
+
+The Vercel project wired to GitHub is `fly-weight-lab`. It is configured with:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `web` |
+| Framework Preset | `Other` |
+| Build / Output / Install | auto-detected |
+
+With that configuration every push to `main` rebuilds the real frontend (static
+page plus the `web/api/*` serverless proxy). The project also carries the four
+production environment variables listed above.
+
+> Pitfall worth recording: if the Root Directory stays at the repository root
+> while the Framework Preset is `Python`, Vercel tries to find a Python
+> entrypoint and the build fails with `No python entrypoint found`. That failure
+> is reported back to GitHub as a red commit status, which looks like a broken
+> CI pipeline but is actually a deployment misconfiguration. GitHub Actions was
+> green the whole time.
+
+## 5. Manual path: ECR plus CreateAgentRuntime
+
+AgentCore Runtime requires:
+
+- Platform `linux/arm64`
+- Port `8080`
+- `POST /invocations` and `GET /ping`
+- An image pushed to ECR
+
+`BedrockAgentCoreApp` provides both routes automatically, so the remaining work
+is build, push, and create. After deployment you can invoke it directly:
 
 ```json
 {
@@ -145,17 +193,20 @@ AgentCore Runtime 要求：
 }
 ```
 
-## 6. 鉴权与安全
+## 6. Auth and security
 
-- 使用最小权限 IAM role：只授予 `bedrock:InvokeModel` 和 AgentCore 所需权限。
-- 不把 AWS 凭据写进代码或提交到仓库。
-- 健康建议仍在应用层加安全下限和医疗边界，不等同于诊断或处方。
-- 本地 `.env` 已被 `.gitignore` 忽略。
+- Least-privilege IAM roles only.
+- No AWS credentials in code or in the repository.
+- Vercel authenticates with short-lived OIDC credentials, not static keys.
+- Health guidance keeps a safety floor and a medical boundary at the
+  application layer; it is not a diagnosis or a prescription.
+- Local `.env` files are ignored by `.gitignore`.
 
-## 7. 本地验证入口（无需调用 AWS）
+## 7. Local verification without AWS
 
 ```bash
 .venv/bin/python -c "import agentcore; print(agentcore.app.handlers)"
 ```
 
-真正调用模型会触发 Bedrock 请求，因此需要先配置凭据与模型访问权限。
+Triggering a model call does reach Bedrock, so credentials and model access are
+required for that path only.

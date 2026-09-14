@@ -15,8 +15,13 @@ contains a small, normalized subset of a public Fitbit dataset:
 - `6962181067_weight.csv` — 14 daily weight observations for one real Fitbit user.
 - `6962181067_activity.csv` — the same user's daily steps, active minutes, and calories.
 - `8877689391_weight.csv` — 9 daily weight observations for a second real user.
-- `8877689391_activity.csv` — the second user's daily activity.
+- `8877689391_activity.csv` — the second user's daily activity (12 rows).
 - `manifest.json` — source, license, citation, and row counts.
+
+Both users are baked into the AgentCore container image, so the live demo runs
+the real business flow for either of them without asking anyone to upload a CSV.
+The `{"mode":"demo","user_id":"..."}` payload loads them straight from
+`data/real_users/`.
 
 The original minute-level archives total hundreds of megabytes and are not
 committed. They can be regenerated locally with:

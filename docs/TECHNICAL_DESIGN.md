@@ -1,211 +1,292 @@
-# 技术方案 — Fly Weight-Lab（果蝇减脂实验室）
+# Technical Design — Fly Weight-Lab
 
-> 版本：v0.1 · 面向：六周黑客松交付 · 技术栈：Strands Agents SDK + AgentCore + Python
+> Version: v0.2 · Scope: six-week hackathon delivery · Stack: Strands Agents SDK + Bedrock AgentCore + Python
 
-## 1. 架构总览
+## 1. Architecture overview
 
-```
-用户日志(体重/饮食/睡眠/情绪/坚持度)
+```text
+User logs (weight / food / sleep / mood / adherence)
         │
         ▼
-┌─────────────────────┐
-│  数据接入层          │  归一化、去噪、基线
-└─────────┬───────────┘
-          ▼
-┌─────────────────────┐
-│  行为数字孪生模型     │  个人化: 坚持度/体重响应/暴食风险
-└─────────┬───────────┘
-          ▼
-┌─────────────────────┐
-│  果蝇蜂群引擎         │  遗传算法: 生成→试错→繁殖→收敛
-└─────────┬───────────┘
-          ▼
-┌─────────────────────┐
-│  决策面(Agent)       │  后台重跑 + 只在真决策时冒出来
-└─────────┬───────────┘
-          ▼
-┌─────────────────────┐
-│  进化看板            │  红叉/绿勾 + 家谱可视化
-└─────────────────────┘
+┌───────────────────────┐
+│  Data ingestion        │  normalize, denoise, baseline
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
+│  Behavioral twin       │  personalized: adherence / weight response / binge risk
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
+│  Fruit-fly swarm       │  genetic algorithm: spawn → score → breed → converge
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
+│  Decision surface      │  background reruns + surfaces only a real decision
+└──────────┬────────────┘
+           ▼
+┌───────────────────────┐
+│  Evolution dashboard   │  cull/keep population, convergence, champion lineage
+└───────────────────────┘
 ```
 
-## 2. 核心组件
+In production the middle three boxes run inside the AgentCore Runtime
+container, and the dashboard is a static Vercel frontend that reaches it
+through a serverless proxy.
 
-### 2.1 数据接入层
+### Deployment topology
 
-- 输入：体重（每日/滚动）、饮食（可粗略到餐次/类别）、睡眠时长、情绪/精力、坚持度标记（是否记录、是否按方案执行）、可选生理周期与用药。
-- 来源：手动、Apple Health / Fitbit 导出、食物记录 API。
-- 职责：清洗、对齐时间轴、去异常值（单日体重暴涨先按水肿处理）、产出可训练特征。
+```text
+Browser (Vercel static page + canvas visuals)
+   │  fetch /api/ping, /api/invocations
+   ▼
+Vercel Serverless Functions            (web/api/*.js)
+   │  OIDC → sts:AssumeRoleWithWebIdentity  → flyweight-vercel-oidc-role
+   │  SigV4
+   ▼
+Amazon Bedrock AgentCore Runtime       (flyweight_lab-k3JItG63s2, HTTP, PUBLIC)
+   │  BedrockAgentCoreApp
+   │   ├── GET  /ping
+   │   ├── POST /invocations   (local swarm, demo/business flow, Strands agent)
+   │   └── POST /business-flow (direct container route for local use)
+   ▼
+Container image in ECR                 (linux/arm64, port 8080)
+```
 
-### 2.2 行为数字孪生（Behavioral Twin）
+## 2. Core components
 
-**定位：不是代谢模拟器，是个人化行为反应模型。**
+### 2.1 Data ingestion
 
-- 输入：历史日志特征 + 一套候选方案。
-- 输出三个预测：
-  - `predict_adherence(protocol)`：这个人能坚持这套方案的概率。
-  - `simulate_weight(protocol, horizon)`：未来 12 周体重轨迹。
-  - `predict_binge_risk(protocol)`：这套方案诱发暴食的概率。
-- 实现：先用**个人历史校准的规则 + 简单回归**起步（六周内可交付），后续可换梯度提升/轻量贝叶斯模型。每周用新日志重拟合，孪生越来越像本人。
-- 诚实边界：我们拟合的是「这个人会不会做、做了会怎样」，不是「他的线粒体怎么工作」。
-- **真实连接组 grounding**：暴食风险里「限制→反弹」的耦合系数来自 Janelia MaleCNS 真实蘑菇体连接组——PAM（奖赏）→MBON 是 PPL（惩罚）→MBON 的约 2.56 倍。用它替换手调常数，作为习惯/奖赏动态的结构先验（不是声称人脑=果蝇脑）。
+- Inputs: weight (daily or rolling), food (down to meal or category), sleep
+  duration, mood and energy, adherence flags, optionally cycle and medication.
+- Sources: manual entry, Apple Health or Fitbit export, food-log APIs.
+- Responsibilities: clean, align timelines, drop outliers (a one-day jump is
+  treated as water first), and emit trainable features.
 
-### 2.3 果蝇蜂群引擎（Genetic Swarm）
+### 2.2 Behavioral twin
 
-每只果蝇 = 一个候选方案。用遗传算法在方案空间里搜索「这个人最优解」。
+**Positioning: a personalized behavioral response model, not a metabolic
+simulator.**
 
-### 2.4 决策面（Agent Orchestrator）
+- Input: historical log features plus one candidate protocol.
+- Output: three predictions.
+  - `predict_adherence(protocol)` — how likely this person is to stick with it.
+  - `simulate_weight(protocol, horizon)` — the 12-week weight trajectory.
+  - `predict_binge_risk(protocol)` — how much this protocol invites bingeing.
+- Implementation: calibrated rules plus simple regression first (deliverable in
+  six weeks), upgradeable to gradient boosting or a light Bayesian model later.
+  Refit weekly on new logs so the twin keeps tracking the person.
+- Honest boundary: we model "will this person do it and what happens if they
+  do", not "how their mitochondria work".
+- **Real connectome grounding:** the restriction → rebound coupling uses the
+  Janelia MaleCNS mushroom body, where PAM (reward) → MBON outweighs
+  PPL (punishment) → MBON by roughly 2.56×. This replaces a hand-tuned constant
+  with a structural prior for habit and reward dynamics. It does not claim that
+  a human brain equals a fly brain.
 
-- 用 Strands Agents SDK 编排后台自治流程。
-- 用 AgentCore 部署与调度。
-- 触发打扰的三类事件：新冠军明显更优 / 风险越线（平台期、坚持度下滑、暴食预警）/ 每周例行更新。
-- 每次只输出一个决策：一句话 + 证据 + 一个本周动作。
+### 2.3 Genetic swarm engine
 
-已实现核心逻辑（无需外部 API 也能跑通）：
+Each fly is a candidate protocol. A genetic algorithm searches the protocol
+space for the best solution for this specific person.
 
-- `flylab/agent_loop.py` 的 `WeightLossAgent` 持有当前方案、体重历史和连接组参数。
-- 每周 `ingest(weight_kg)` 摄入体重，`tick(week)` 重跑蜂群。
-- 通过「冠军方案指纹」判断是否真的变化；通过短窗口体重差检测平台期。
-- 新检测到平台期时给行为孪生的 `metabolic_adaptation` 加 0.05，迫使下一轮搜索换新杠杆，避免重复推同一条建议。
-- 只有 `new_plateau or changed` 且达到重推间隔时才调用决策面，其余周安静。
-- `state_dict()` / `save_state()` / `load_state()` 把当前方案、体重历史、平台期记忆和最后重推周保存为 JSON，重启后可无缝继续。
+- Population: `N = 500–2000` in offline demos, `250–350` for the live demo to
+  keep latency inside the serverless timeout budget.
+- Selection: tournament (`k = 3–5`), elitism keeps the top K each generation.
+- Variation: uniform crossover plus per-gene mutation (Gaussian jitter for
+  continuous genes, flip or resample for discrete genes).
+- Determinism: each fly's simulated future is seeded from its genotype via a
+  stable SHA-1 digest, so the same fly always receives the same score. This
+  removed a real bug caused by Python's per-process salted string hash.
 
-可选 Strands 桥接：
+### 2.4 Decision surface and background loop
 
-- `flylab/strands_agent.py` 的 `build_strands_agent()` 在安装 `strands-agents` 后可用。
-- 默认 `STRANDS_MODEL_PROVIDER=mock`，使用确定性的 `MockModel` 跑完整 tool-call 循环，不需要 API key。
-- 设置 `STRANDS_MODEL_PROVIDER=ollama` 时使用 `OllamaModel` 和本地模型；也可扩展 OpenAI/Anthropic/Bedrock。
-- 暴露六个窄工具，让模型组合调用，而不是一个 god function。
-- 已验证：`build_strands_agent(provider="mock")` 能连续调用 `evolve_champion` 和 `surface_decision` 并正常结束。
+- Implemented in `flylab/agent_loop.py` as `WeightLossAgent`.
+- The agent holds the current protocol, the weight history, and the connectome
+  parameters.
+- Each week, `ingest(weight_kg)` takes the new observation and `tick(week)`
+  reruns the swarm.
+- A protocol "fingerprint" decides whether the champion genuinely changed; a
+  short-window weight delta detects a plateau.
+- When a new plateau appears, the agent nudges the twin's
+  `metabolic_adaptation` up by 0.05 so the next search is forced to find a
+  different lever instead of repeating the same advice.
+- The decision surface is called only when `new_plateau or changed` and the
+  resurface interval has elapsed. Every other week stays quiet.
+- `state_dict()` / `save_state()` / `load_state()` persist the current protocol,
+  weight history, plateau memory, and last surface week as JSON, so a restart
+  does not lose the experiment.
+- Every tick also records a compact evolution history (best, mean, and a
+  culled/kept farm string per generation) that the dashboard renders.
 
-AgentCore 部署入口：
+### 2.5 Strands Agents SDK bridge
 
-- `agentcore/main.py` 使用 `BedrockAgentCoreApp` 包装 Strands agent。
-- `@app.entrypoint` 默认走 local：空 `{}` 请求直接跑 `Swarm`，返回冠军方案、fitness、坚持度和暴食风险。
-- 显式 `{"mode":"agent","prompt":"..."}` 才调用 `agent.invoke_async(prompt)`。
-- AgentCore Runtime 自动提供 `POST /invocations` 与 `GET /ping`；本地已确认 routes 与 handler 注册成功。
-- `Dockerfile` 构建 linux/arm64 镜像；`scripts/deploy_agentcore.py` 完成 ECR 推送与 `create_agent_runtime`。
-- 完整部署步骤见 `docs/AGENTCORE_DEPLOYMENT.md`。
+- `flylab/strands_agent.py` exposes six narrow tools instead of one god
+  function: `get_user_context`, `detect_plateau`, `simulate_candidate`,
+  `evolve_champion`, `surface_decision`, `record_feedback`.
+- Default `STRANDS_MODEL_PROVIDER=mock` uses a deterministic `MockModel` that
+  runs a complete tool-call loop with no API key.
+- Set `STRANDS_MODEL_PROVIDER` to `ollama`, `openai`, `anthropic`, or `bedrock`
+  to use a real model through the same tools.
 
-### 2.5 进化看板
+### 2.6 AgentCore runtime entrypoint
 
-- 展示蜂群代数、种群分布、红叉/绿勾、冠军方案家谱。
-- 是 demo 的核心视觉资产。
+- `agentcore/main.py` wraps the project in `BedrockAgentCoreApp`.
+- `@app.entrypoint` handles three payload modes:
+  - `{}` (default, `local`) runs the swarm directly with no model or AWS call.
+  - `{"mode":"demo", ...}` or `{"mode":"business_flow", ...}` runs the real-data
+    product loop. If no `weight_records` are supplied it loads the preloaded
+    real Fitbit users from `data/real_users/`.
+  - `{"mode":"agent","prompt":"..."}` runs the Strands tool-call loop.
+- The response for a demo run includes the calibration, the real weight summary,
+  the per-week flow, the compact evolution history, the champion protocol, the
+  connectome parameters, the surfaced weeks, the final decision, and the durable
+  feedback memory.
+- AgentCore Runtime provides `POST /invocations` and `GET /ping` automatically.
+- `Dockerfile` builds a `linux/arm64` image on port 8080;
+  `scripts/deploy_agentcore.py` builds, pushes to ECR, and creates or updates
+  the runtime, then waits for `READY`.
 
-## 3. 果蝇基因型（Genotype）
+### 2.7 Edge proxy and frontend
 
-一只果蝇编码以下基因（可裁剪）：
+- `web/api/invocations.js` forwards browser requests to `InvokeAgentRuntime`.
+- `web/api/ping.js` calls the control-plane `GetAgentRuntime` for a real health
+  check rather than a static "ok".
+- Both authenticate with `@vercel/oidc-aws-credentials-provider`, exchanging the
+  Vercel OIDC token for short-lived STS credentials. No long-lived AWS keys are
+  stored in Vercel.
+- The static frontend is dependency-free and uses three canvases: the diving fly
+  swarm, the sonar convergence radar, and the connectome wiring animation.
+  Charts are hand-rendered SVG so there is no charting library to load.
 
-| 基因 | 含义 | 示例范围 |
+## 3. Fly genotype
+
+| Gene | Meaning | Example range |
 |---|---|---|
-| calorie_target | 每日热量目标 | 维持热量 - 200~500（设安全下限） |
-| protein_pct | 蛋白占比 | 25% ~ 45% |
-| carb_pct | 碳水占比 | 20% ~ 50% |
-| fat_pct | 脂肪占比 | 由剩余推导 |
-| meal_window | 进食窗口（小时） | 8 = 16:8；12 = 不断食 |
-| meal_count | 每日餐次 | 2 ~ 5 |
-| late_night_rule | 是否允许深夜加餐 | bool（某些人保留可防暴食） |
-| habit_trigger | 锚点小习惯 | 枚举（早餐先吃蛋白 / 午饭后走 10 分钟等） |
-| workout_freq | 每周训练次数 | 0 ~ 6 |
-| workout_type | 训练类型 | 有氧/抗阻/混合 |
-| sleep_target | 睡眠目标 | 7 ~ 9 小时 |
-| refeed_schedule | 高热量日节奏 | none / weekly / biweekly |
-| step_target | 每日步数（NEAT） | 4000 ~ 12000 |
+| `calorie_target` | daily calorie target | maintenance − 200 to 500 (hard floor applied) |
+| `protein_pct` | protein share | 25% – 45% |
+| `carb_pct` | carbohydrate share | 20% – 50% |
+| `fat_pct` | fat share | derived from the remainder |
+| `meal_window` | eating window in hours | 8 = 16:8, 12 = no fasting |
+| `meal_count` | meals per day | 2 – 5 |
+| `late_night_rule` | allow a planned late-night snack | bool; protective for some people |
+| `workout_freq` | training sessions per week | 0 – 6 |
+| `workout_type` | training type | cardio / resistance / mix |
+| `sleep_target` | sleep target | 7 – 9 hours |
+| `refeed_schedule` | planned higher-calorie day | none / weekly / biweekly |
+| `step_target` | daily steps (NEAT) | 4,000 – 12,000 |
 
-## 4. 适应度函数（Fitness）
+## 4. Fitness function
 
-对每只果蝇 `p`，用孪生模型评估：
+For each fly `p`:
 
+```text
+adherence     = twin.predict_adherence(p)
+weight_curve  = twin.simulate_weight(p, 12 weeks)
+total_loss    = start_weight - end_weight
+plateau_risk  = plateau detection over the curve
+binge_risk    = twin.predict_binge_risk(p)
+dropout_risk  = 1 - adherence
+
+fitness = loss_term(total_loss) + w2 * adherence
+        - w3 * plateau_risk - w4 * binge_risk - w5 * dropout_risk
+        + personalization_terms
 ```
-adherence  = twin.predict_adherence(p)
-weight_curve = twin.simulate_weight(p, 12周)
-total_loss = 起始体重 - 期末体重
-plateau_risk = 检测轨迹平台期
-binge_risk = twin.predict_binge_risk(p)
-dropout_risk = 1 - adherence
 
-fitness = w1*total_loss + w2*adherence
-        - w3*plateau_risk - w4*binge_risk - w5*dropout_risk
-```
+Weight loss is scored as a **sustainable band** rather than a pure maximization
+target. Losing less than the band or more than the band both lose points, which
+stops the swarm from crowning either a do-nothing plan or a crash diet.
 
-要点：**适应度优先「能不能坚持」，其次才是「减多少」。** 反完美主义写进函数里。
+Adherence carries the largest weight. Anti-perfectionism is written into the
+function, not bolted on as a disclaimer.
 
-## 5. 遗传算法细节
+## 5. Safety constraints
 
-- 种群规模：`N = 500 ~ 2000`。
-- 初始化：随机 + 常识种子（普通热量缺口方案等）。
-- 选择：锦标赛选择（`k=3~5`）。
-- 交叉：基因向量均匀交叉。
-- 变异：每个基因以概率扰动（连续基因高斯扰动，离散基因翻转/重采样）。
-- 精英保留：每代保留 top-K。
-- 停止条件：适应度收敛或达到代数上限。
-- 安全约束：热量目标不得低于安全下限；不产出危险节食方案。
+- Calorie targets cannot fall below a weight-based floor.
+- Protein, sleep, and eating-window values have hard bounds.
+- Out-of-scope profiles (`start_weight_kg` outside 40–220 kg, extremely low
+  adherence, extreme binge sensitivity) raise an escalation instead of a plan.
+- The agent produces decision prompts, never diagnoses or prescriptions.
 
-## 6. 数据流
+## 6. Data flow
 
-1. 新日志进入 → 触发孪生重拟合（每日增量）。
-2. 每周或越线时 → 触发完整蜂群进化。
-3. 进化收敛 → 冠军方案交给决策面。
-4. 决策面判断是否值得打扰 → 推一条决策给用户。
-5. 用户反馈（坚持/放弃/记录）回流，成为下一代果蝇的适应度证据。
+1. New log arrives → incremental twin refit.
+2. Weekly, or when a risk line is crossed → full swarm evolution.
+3. Evolution converges → the champion protocol reaches the decision surface.
+4. The decision surface decides whether it is worth interrupting → one decision
+   reaches the user.
+5. User feedback (kept it / dropped it / logged) flows back as fitness evidence
+   for the next generation.
 
-## 7. 技术栈
+## 7. Technology stack
 
-- **Agent 编排**：Strands Agents SDK。
-- **部署/调度**：AgentCore（同时强化 Technical Implementation 评分）。
-- **算法/模型**：Python 3.x + numpy/pandas + scikit-learn。
-- **存储**：用户日志、方案史、蜂群状态 → DynamoDB 或 Postgres。
-- **自然语言**：Strands/Bedrock LLM 生成习惯建议与解释文案（可选）。
-- **前端**：React/Next.js 进化看板。
-
-## 8. MVP 切片：平台期破解器
-
-先交付最窄、最能 demo 的原子：
-
-1. 一只果蝇 = 一个未来情景，跑 1 万次 Monte Carlo。
-2. 红叉（断粮/爆掉）与绿勾（存活）可视化。
-3. 只在检测到平台期或坚持度下滑时，推一个破局杠杆。
-
-这一片能独立成片、独立演示，后续再扩成完整实验室。
-
-## 8.1 已落地代码清单
-
-| 模块 | 职责 |
+| Layer | Choice |
 |---|---|
-| `flylab/genotype.py` | 一只果蝇 = 一套减脂方案基因型 |
-| `flylab/twin.py` | 行为数字孪生：坚持度、体重轨迹、暴食风险 |
-| `flylab/fitness.py` | 适应度函数，坚持度权重最高 |
-| `flylab/evolution.py` | 锦标赛选择、交叉、变异、精英保留 |
-| `flylab/plateau.py` | 平台期检测 |
-| `flylab/connectome.py` | Janelia MaleCNS 蘑菇体参数加载与连接组构建 |
-| `flylab/agent.py` | 冠军方案翻译成一个决策 + 一句理由 |
-| `flylab/agent_loop.py` | 后台 agent 循环 + 状态保存/恢复（JSON 持久化） |
-| `flylab/strands_agent.py` | 六个窄工具 + MockModel + 真实 provider 工厂 |
-| `flylab/calibration.py` | 从 CSV 日志拟合行为孪生参数 |
-| `flylab/safety.py` | 热量/蛋白/睡眠/窗口护栏与医疗升级 |
-| `flylab/memory.py` | 用户会话与反馈持久化 |
-| `flylab/evaluation.py` | 平台期检测与个性化离线评测 |
-| `flylab/telemetry.py` | 结构化 JSON 事件与计时 |
-| `agentcore/main.py` | Bedrock AgentCore Runtime 部署入口 |
-| `scripts/make_dashboard.py` | 用真实运行结果生成 2880x1600 进化看板 |
-| `scripts/run_evals.py` | 输出离线评测 scorecard |
-| `scripts/calibrate_twin.py` | 从 CSV 拟合并输出孪生参数 |
-| `scripts/deploy_agentcore.py` | ECR 构建推送 + AgentCore runtime 创建 |
-| `web/` | Vercel-ready 静态演示前端 |
-| `examples/demo_agent.py` | 12 周后台 agent 演示 |
-| `tests/test_evolution.py` | 基因型、蜂群、连接组、后台循环安静性 |
-| `tests/test_advanced.py` | 校准、安全、记忆、评测、Strands 本地循环 |
+| Agent orchestration | Strands Agents SDK |
+| Managed runtime | Amazon Bedrock AgentCore Runtime |
+| Container registry | Amazon ECR |
+| Frontend + edge proxy | Vercel static site + Node serverless functions |
+| Edge authentication | Vercel ↔ AWS OIDC federation |
+| Algorithms | Python 3.12, numpy, stdlib `random` for the GA |
+| Persistence | JSON snapshots for the demo; DynamoDB or Postgres for production |
+| Visualization | Hand-rolled canvas and SVG |
 
-## 9. 六周落地计划
+## 8. MVP slice: the plateau breaker
 
-- 第 1 周：数据接入 + 平台期破解器 MVP + 进化可视化。
-- 第 2–3 周：Strands Agents SDK 编排 + AgentCore 部署 + 后台定时重跑。
-- 第 4–5 周：完整遗传进化（繁殖/交叉/变异/收敛）+ 行为孪生重拟合闭环。
-- 第 6 周：demo 视频、README、架构图、提交材料。
+The narrowest demonstrable atom:
 
-## 10. 风险与缓解
+1. One fly equals one future; run ten thousand.
+2. Visualize culled versus surviving flies.
+3. Surface one lever only when a plateau or adherence drop appears.
 
-- **孪生可信度**：坚持「行为孪生」的诚实表述；用真实数据拟合，不编代谢。
-- **数据稀疏**：冷启动用常识种子 + 快速校准；2 周基线后开始真正个性化。
-- **健康安全**：安全热量下限、危险方案硬过滤、医疗边界提示。
-- **范围失控**：MVP 钉死「平台期破解器」，再按切片外扩。
+This slice stands alone as a demo and later grew into the full lab.
+
+## 8.1 Code inventory
+
+| Module | Responsibility |
+|---|---|
+| `flylab/genotype.py` | one fly equals one protocol genotype |
+| `flylab/twin.py` | behavioral twin: adherence, weight trajectory, binge risk |
+| `flylab/fitness.py` | sustainable-band fitness with adherence weighted highest |
+| `flylab/evolution.py` | tournament selection, crossover, mutation, elitism |
+| `flylab/plateau.py` | plateau detection |
+| `flylab/connectome.py` | Janelia MaleCNS mushroom-body parameter loading |
+| `flylab/agent.py` | translate a champion into one decision plus one reason |
+| `flylab/agent_loop.py` | background agent loop, state persistence, evolution summary |
+| `flylab/business_flow.py` | real-data product loop over weekly checkpoints |
+| `flylab/strands_agent.py` | six narrow tools, MockModel, real provider factory |
+| `flylab/calibration.py` | fit twin parameters from real CSV logs |
+| `flylab/safety.py` | calorie/protein/sleep/window guardrails and escalation |
+| `flylab/memory.py` | durable per-user session and feedback memory |
+| `flylab/evaluation.py` | offline plateau and personalization evaluation |
+| `flylab/telemetry.py` | structured JSON events and timing |
+| `agentcore/main.py` | AgentCore Runtime entrypoint and demo payload handling |
+| `scripts/setup_agentcore_role.py` | create the runtime execution role |
+| `scripts/deploy_agentcore.py` | build, push, create or update the runtime, wait for READY |
+| `scripts/invoke_agentcore.py` | invoke the deployed runtime from the CLI |
+| `scripts/setup_vercel_oidc_role.py` | create the Vercel OIDC provider and role |
+| `scripts/run_business_flow.py` | real-data end-to-end business loop |
+| `scripts/ingest_fitbit_data.py` | download and normalize the real Fitbit dataset |
+| `scripts/make_dashboard.py` | generate the 2880×1600 evolution dashboard image |
+| `scripts/run_evals.py` | offline evaluation scorecard |
+| `scripts/calibrate_twin.py` | fit and print twin parameters from a CSV |
+| `web/` | Vercel frontend, canvas visuals, and serverless proxy functions |
+| `examples/demo_agent.py` | 12-week background agent demo |
+| `tests/` | evolution, connectome, calibration, safety, memory, Strands loop |
+
+## 9. Six-week plan
+
+- Week 1: data ingestion + plateau-breaker MVP + evolution visualization.
+- Weeks 2–3: Strands Agents SDK orchestration + AgentCore deployment +
+  scheduled background reruns.
+- Weeks 4–5: full genetic evolution and the twin refit loop.
+- Week 6: demo video, README, architecture diagrams, submission.
+
+## 10. Risks and mitigation
+
+- **Twin credibility:** keep the honest "behavioral twin" framing and fit from
+  real data instead of inventing metabolism.
+- **Sparse data:** cold-start with common-sense seeds and fast calibration, then
+  personalize after a two-week baseline.
+- **Health safety:** calorie floors, hard filtering of dangerous protocols, and
+  explicit medical escalation.
+- **Scope creep:** pin the MVP to the plateau breaker, then expand slice by
+  slice.

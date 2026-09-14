@@ -1,126 +1,165 @@
-# PRD — Fly Weight-Lab（果蝇减脂实验室）
+# PRD — Fly Weight-Lab
 
-> 版本：v0.1 · 赛道：Everyday Agents · 目标赛事：Agents for Humans Hackathon（AWS × Strands Agents SDK）
+> Version: v0.2 · Track: Everyday Agents · Event: Agents for Humans Hackathon (AWS × Strands Agents SDK)
 
-## 1. 一句话定位
+## 1. One-line positioning
 
-一个在后台自动运行的 AI agent：用「赛博果蝇」数字孪生群，为每个人进化出一套**只有这个人能坚持、且对这个身体有效**的减脂方案，只在真正需要拍板时冒出来，每次只给一个决策。
+A background AI agent that breeds a swarm of cyber fruit flies — cheap,
+disposable digital twins — to evolve the one weight-loss protocol that a
+specific person can actually sustain, and surfaces a single decision only when
+a real decision is needed.
 
-## 2. 背景与问题
+## 2. Background and problem
 
-减脂是全球最普遍、也最令人挫败的目标之一。绝大多数失败不是「不知道要少吃多动」，而是三个结构性难题：
+Weight loss is one of the most universal and most frustrating goals in the
+world. Most failures are not caused by not knowing that you should eat less and
+move more. They come from three structural problems:
 
-1. **反馈慢且脏。** 真正看到变化要几周，中间被水肿、平台期、激素、生理周期、生活变故污染。
-2. **极度个体化。** 对 A 有效的 16:8 断食，可能在 B 身上直接诱发暴食；同一个人不同人生阶段也不同。
-3. **试错成本极高。** 人只有一副身体，没法同时跑一万种方案。每次失败都是几周时间 + 一次自我怀疑。
+1. **Feedback is slow and noisy.** A real signal takes weeks, and it is polluted
+   by water weight, plateaus, hormones, cycles, and life events.
+2. **It is deeply individual.** A 16:8 fast that works for one person can
+   directly trigger bingeing in another, and the same person changes across
+   life stages.
+3. **Experimentation is expensive.** You only have one body, so you cannot run
+   ten thousand protocols at once. Every failed attempt costs weeks plus one
+   more round of self-doubt.
 
-现有产品的错位：MyFitnessPal 做**记录**，Noom 做**提醒**，模板化内容做**通用建议**。没有一个回答真正决定成败的问题——**「哪套方案，这个具体的人真的能撑住，身体又会怎么反应」**。
+Existing products solve the wrong problem. MyFitnessPal does **tracking**. Noom
+does **nudging**. Template content does **generic advice**. None of them answer
+the question that actually decides success: **which protocol can this specific
+person sustain, and how will their body respond?**
 
-用户因此得出的错误结论是「是我没毅力」。真相是：他们一直在用自己唯一的身体，做没有建模、不可重复的实验。
+The wrong conclusion people draw is "it must be me." The truth is that they have
+been running unmodelled, unrepeatable experiments on the one body they cannot
+afford to lose.
 
-## 3. 目标用户
+## 3. Target users
 
-- **核心用户**：反复减脂失败、开始怀疑「是不是我的问题」的普通人。试过断食、生酮、热量计算、私教课，都因为坚持不下去或平台期而放弃。
-- **次级用户**：减下来但怕反弹的人（复胖预防）；有慢性病或服药背景、需要更谨慎方案的人（只做哨兵与提示，不做医疗建议）。
+- **Core user:** ordinary people who have failed at weight loss repeatedly and
+  have started to blame themselves. They tried fasting, keto, calorie counting,
+  personal training, and quit because they could not sustain it or hit a
+  plateau.
+- **Secondary users:** people who lost weight and fear regaining it; people with
+  chronic conditions or medication who need a more cautious protocol and get a
+  sentinel plus an escalation prompt rather than medical advice.
 
-## 4. 价值主张
+## 4. Value proposition
 
-**别的 App 记录你吃了什么；这个 agent 帮你做实验，并且替你承担失败。**
+**Other apps record what you ate. This agent runs experiments for you and
+absorbs the cost of failure.**
 
-你只跑一个方案，果蝇替你跑一万个。你只做每周一个「锁死这个习惯」的决定，其余噪音全部由 agent 在后台消化。
+Your body runs one protocol. The flies run ten thousand. You make one "lock in
+this habit" decision per week; the agent absorbs the rest of the noise in the
+background.
 
-## 5. 核心功能
+## 5. Core features
 
-### F1. 行为数字孪生（Behavioral Twin）
+### F1. Behavioral twin
 
-- 用用户真实历史日志（体重、饮食、睡眠、情绪、坚持度，可选：生理周期、用药）训练一个**个人化的行为反应模型**。
-- 模型预测的不是代谢，而是：给定一套方案，**这个人**坚持得下去吗、体重会怎么走、暴食风险有多高。
+- Trains a **personalized behavioral response model** from the user's real logs
+  (weight, food, sleep, mood, adherence; optionally cycle and medication).
+- Predicts behavior, not metabolism: given a protocol, will **this person**
+  sustain it, how will weight move, and how high is the binge risk?
 
-### F2. 果蝇蜂群引擎（Genetic Swarm）
+### F2. Genetic swarm engine
 
-- 每只果蝇是一套候选方案（基因型：热量目标、蛋白比例、进食窗口、习惯触发器、训练、睡眠、refeed 节奏）。
-- 用数字孪生跑几千次模拟未来，按适应度打分，弱方案淘汰，强方案繁殖、交叉、变异，跨代收敛。
+- Each fly is a candidate protocol (genotype: calorie target, protein share,
+  eating window, habit trigger, training, sleep, refeed cadence).
+- The twin simulates thousands of futures, scores each fly, culls the weak, and
+  breeds, crosses over, and mutates the strong across generations.
 
-### F3. 决策面（Decision Surface）
+### F3. Decision surface
 
-- agent 在后台按计划重跑（有新日志就重拟合、每周做一次完整进化）。
-- 只在三类时刻打扰人：① 出现明显更优的新冠军方案；② 风险越过阈值（平台期、坚持度下滑、暴食预警）；③ 每周一次的「锁一个习惯」更新。
-- 每次只输出**一个决策** + 一句理由 + 一个本周要锁的动作。
+- The agent reruns on a schedule in the background (refit on new logs, full
+  evolution weekly).
+- It interrupts a human in exactly three situations: a clearly better champion
+  appears; a risk crosses a threshold (plateau, adherence drop, binge warning);
+  or the weekly "lock one habit" update is due.
+- Every surface is **one decision** plus one reason plus one action for the week.
 
-### F4. 进化看板（Evolution Dashboard）
+### F4. Evolution dashboard
 
-- 红叉（死掉的果蝇）/ 绿勾（活下来的冠军）、代数滚动、方案「家谱」可视化。
-- 既是产品，也是 demo 的核心镜头。
+- Dead flies versus surviving champions, generation-by-generation population
+  farm, and a convergence view of the protocol lineage.
+- It is both a product surface and the core visual of the demo.
 
-## 6. 核心用户流程
+## 6. Core user journey
 
-1. 用户接入数据（手动或可穿戴导出），完成 2 周基线。
-2. agent 拟合出行为孪生，后台跑第一轮蜂群。
-3. 每周收到一条：**「这周只锁这一个习惯」**，附为什么、以及下一步。
-4. 平台期或坚持度下滑时，agent 主动推一个破局杠杆。
-5. 用户持续记录，孪生持续变准，蜂群持续进化，方案越来越像「只为你长出来的」。
+1. The user connects data (manual entry or wearable export) and completes a
+   two-week baseline.
+2. The agent fits the behavioral twin and runs the first swarm in the
+   background.
+3. Each week the user receives one message: **"lock in this single habit"**,
+   with the reason and the next action.
+4. On a plateau or adherence drop, the agent proactively surfaces one lever.
+5. The user keeps logging, the twin keeps sharpening, and the swarm keeps
+   evolving toward a protocol that looks like it grew only for them.
 
-## 7. 成功标准（评审导向）
+## 7. Success criteria (judge-oriented)
 
-- **可演示**：两个同目标用户，蜂群收敛出**相反**方案，证明个性化是真实而非模板。
-- **可解释**：每个冠军方案都带着「为什么是它」的进化证据链。
-- **可验证**：行为孪生用真实日志拟合，不是编造市场或代谢假设。
-- **贴主题**：后台自动跑、只推真决策、每次一个。
-- **安全**：永不给出危险节食目标，永不越界成医疗建议。
+- **Demonstrable:** two users with the same goal evolve **opposite** protocols,
+  proving personalization is real rather than templated.
+- **Explainable:** every champion carries the evolutionary evidence for why it
+  won.
+- **Verifiable:** the twin is fitted from real logs, not from invented market or
+  metabolic assumptions.
+- **On theme:** runs autonomously in the background, surfaces only real
+  decisions, one at a time.
+- **Safe:** never emits a dangerous deficit target and never crosses into
+  medical advice.
 
-## 8. 非目标（明确不做）
+## 8. Non-goals
 
-- 不做代谢模拟器（不可信、也不必要）。
-- 不做医疗诊断或处方；有疾病背景的用户只给「去问医生」的提示。
-- 不做社交社区、打卡排行榜、电商导流（第一版不碰）。
-- 不自动执行任何影响健康的外部动作（不替你下单、不替你吃药）。
+- No metabolic simulator (neither credible nor necessary).
+- No medical diagnosis or prescription; users with a clinical background get a
+  "talk to a clinician" escalation only.
+- No social feed, streak leaderboard, or commerce funnel in v1.
+- No automatic external action that affects health (no ordering, no dosing).
 
-## 9. 风险与合规
+## 9. Risks and compliance
 
-- **信任门槛**：钱和健康都是高信任领域。缓解：只做「决策提示」而非「命令」，全程可解释、可撤回。
-- **数字孪生可信度**：必须坦诚它是「行为孪生」而非「代谢模拟」，这是评委必问点。
-- **健康安全**：热量目标设置安全下限（基于 BMR/身高体重），禁止危险节食建议。
-- **数据隐私**：体重、饮食、情绪属敏感数据，本地/加密存储，明示用途，可删除。
+- **Trust barrier:** money and health are high-trust domains. Mitigation: the
+  agent offers decision prompts, not commands, and everything is explainable and
+  reversible.
+- **Twin credibility:** it must be described honestly as a *behavioral* twin,
+  not a metabolic model. This is the first question a judge asks.
+- **Health safety:** calorie targets carry a hard floor, and dangerous protocols
+  are filtered out.
+- **Data privacy:** weight, food, and mood are sensitive. Store locally or
+  encrypted, state the purpose clearly, and allow deletion.
 
-## 10. 里程碑与 MVP
+## 10. Milestones
 
-- **M0（第 1 周）**：平台期破解器切片。一只果蝇 = 一个未来，跑 1 万次，红叉绿勾可视化。这是最小可演示原子。
-- **M1（第 2–3 周）**：接入 Strands Agents SDK + AgentCore，让它在后台定时重跑、只在越过风险线时打扰人。
-- **M2（第 4–5 周）**：加上「方案生成 + 遗传进化」，蜂群真正繁殖收敛，形成完整实验室。
-- **M3（第 6 周）**：5 分钟 demo 视频 + 文档 + 提交。
+- **M0 (week 1):** plateau-breaker slice. One fly equals one future, ten thousand
+  runs, cull/keep visualization. This is the smallest demonstrable atom.
+- **M1 (weeks 2–3):** Strands Agents SDK plus AgentCore, so it reruns on a
+  schedule in the background and only interrupts when a risk line is crossed.
+- **M2 (weeks 4–5):** protocol generation plus genetic evolution, so the swarm
+  genuinely breeds and converges into a full lab.
+- **M3 (week 6):** five-minute demo video, documentation, submission.
 
-### 当前实现进度（v0.1）
+## 11. Current status
 
-已完成并验证：
+The MVP is built and deployed. Full details live in
+[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md); the short version:
 
-- 果蝇基因型、行为孪生、适应度函数、遗传算法，两条用户路径能进化出相反方案。
-- 真实 Janelia MaleCNS 蘑菇体连接组接入行为孪生的暴食风险耦合项，而非贴图。
-- `WeightLossAgent` 后台循环：每周摄入体重、重跑蜂群，只在平台期新出现或冠军方案真实改变时输出一个决策。
-- `WeightLossAgent` 状态持久化：当前方案、体重历史、平台期记忆可保存为 JSON 并恢复，重启不丢实验。
-- `strands-agents>=1.55` 已安装验证，`build_strands_agent()` 默认用离线 MockModel 跑完整 tool-call 循环。
-- Strands 工具已拆成 `get_user_context`、`detect_plateau`、`simulate_candidate`、`evolve_champion`、`surface_decision`、`record_feedback` 六个窄工具。
-- 行为孪生支持从 CSV 日志拟合参数，个性化不再只是手调默认值。
-- 已接入真实 Fitbit 数据：Zenodo `10.5281/zenodo.53894`，并把小规模归一化结果提交到 `data/real_users/`。
-- 真实业务流可一键跑通：`scripts/run_business_flow.py` 完成上传 → 校准 → 周循环 → 只冒出一个决策 → 用下一周真实体重结果写回记忆。
-- 适应度函数已改为「可持续减重区间」优化，不再奖励“很温和但不掉秤”的冠军；两个同目标用户能稳定进化出相反方案。
-- `web/` 支持上传真实 CSV，并调用 `/business-flow` 接口，而不是只点一个无数据按钮。
-- 安全护栏、会话记忆、结构化遥测、离线评测脚本和 Vercel 静态前端均已落地。
-- `agentcore/main.py` 已用 `BedrockAgentCoreApp` 注册 `main` 入口，`/invocations` 与 `/ping` 路由本地验证通过。
-- `agentcore/main.py` 默认 local 模式：`POST /invocations` 发送 `{}` 即可真实跑蜂群，不需要模型或 AWS。
-- `{"mode":"agent","prompt":"..."}` 保留为可选模型驱动路径。
-- 已补齐 `Dockerfile` 和 `scripts/deploy_agentcore.py` 一键部署脚本。
-- 已生成正式进化看板图与架构图。
+- Genetic swarm, behavioral twin, process-stable fitness, and the background
+  agent loop are implemented and tested.
+- The behavioral twin is grounded in the real Janelia MaleCNS mushroom body
+  (4,064 Kenyon cells, 340 DANs, 97 MBONs, reward : punishment = 2.56 : 1).
+- Two real Fitbit users are preloaded, so the live demo runs the real business
+  flow without asking anyone to upload a CSV.
+- A real Bedrock AgentCore Runtime is deployed in `us-east-1` and is `READY`;
+  the data plane has been invoked successfully.
+- The Vercel frontend proxies to AgentCore through two serverless functions and
+  authenticates with Vercel ↔ AWS OIDC federation instead of long-lived keys.
+- GitHub Actions and the Vercel production deployment both pass on `main`.
 
-下一阶段：
+## 12. Open hypotheses
 
-- 有模型 API 时把 `STRANDS_MODEL_PROVIDER` 切到 Ollama/OpenAI/Anthropic/Bedrock，录一条真实模型推理的 demo。
-- 提供 AWS 凭据后跑通真实 Bedrock AgentCore 部署；当前 `scripts/deploy_agentcore.py` 会在有凭据时构建 arm64 镜像并创建 runtime，但本机无凭据不能凭空完成部署。
-- 把公网 Vercel 前端接到一个真正的公网 Python 后端，让评委不装环境也能上传 CSV 跑完整流程。
-
-已补充 `docs/DEMO_STORYBOARD.md`：把三个可运行 demo 串成 5 分钟演示脚本。
-
-## 11. 待验证假设
-
-1. 用户愿意持续记录至少 2 周，数据量足以拟合一个够用的行为孪生。
-2. 「每次只给一个决策」比「给一屏建议」更能驱动真实坚持。
-3. 数字孪生的「相反方案」对比，在 demo 里足以让评委相信个性化是真实的。
+1. Users will log consistently enough for at least two weeks to fit a usable
+   behavioral twin.
+2. "One decision at a time" drives more real adherence than "a screen of
+   suggestions."
+3. The two-user opposite-protocol comparison is enough to convince a judge that
+   personalization is real.

@@ -49,3 +49,18 @@ keeps a planned late-night snack and a weekly refeed; the disciplined twin
 gets a tighter calorie target with neither. The aggressive baseline
 illustrates the product's safety thesis: an extreme 1,500 kcal / 8-hour plan
 simulates as a *gain* because adherence collapses and binge events dominate.
+
+## How this is checked in CI
+
+The GitHub Actions `ci` workflow runs the full test suite on every push:
+
+```bash
+pip install -r requirements-local.txt
+python -m unittest discover -s tests -v
+```
+
+That is 14 tests covering the genotype, the swarm, connectome grounding, the
+background loop's quietness, calibration, safety, memory, the offline
+evaluation, and the Strands local tool-call loop. The reference numbers above
+come from `scripts/run_evals.py` and are regenerated locally, not asserted as
+golden values, so the suite stays stable while the search improves.
