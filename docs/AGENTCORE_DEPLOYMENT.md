@@ -16,6 +16,8 @@
 - `flylab/strands_agent.py`：暴露 `run_swarm` 与 `is_plateau` 两个 Strands 工具。
 - `requirements-strands.txt`：`strands-agents>=1.55`。
 - `requirements-agentcore.txt`：`bedrock-agentcore>=1.23`。
+- `Dockerfile`：linux/arm64 容器镜像。
+- `scripts/deploy_agentcore.py`：ECR 构建/推送 + `create_agent_runtime`。
 
 已本地验证：
 
@@ -23,6 +25,13 @@
 import agentcore
 agentcore.app.handlers -> {'main'}
 routes -> ['/invocations', '/ping', '/ws']
+```
+
+本地 HTTP 烟测（无 AWS 凭据）：
+
+```text
+GET  /ping -> 200 {"status":"Healthy", ...}
+POST /invocations {"mode":"local"} -> 200 {"mode":"local","champion":{...},...}
 ```
 
 ## 3. 前置条件
@@ -43,6 +52,15 @@ routes -> ['/invocations', '/ping', '/ws']
 4. 将 `agentcore/main.py` 作为入口点。
 5. 本地运行并测试 `/ping` 与 `/invocations`。
 6. 执行 `agentcore deploy` 部署到 AWS。
+
+也可以直接使用本仓库脚本：
+
+```bash
+export AWS_REGION=<region>
+export AWS_ACCOUNT_ID=<account-id>
+export AGENTCORE_ROLE_ARN=<role-arn>
+.venv/bin/python scripts/deploy_agentcore.py
+```
 
 ## 5. 方法 B：手动部署到 ECR + CreateAgentRuntime
 

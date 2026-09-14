@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+*.pyc
+.env
+.env.*
+data/mb_connectome.csv
+assets
+docs
+examples
+tests
+scripts

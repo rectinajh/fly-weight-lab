@@ -5,15 +5,23 @@ app. The runtime exposes ``POST /invocations`` and ``GET /ping`` automatically.
 
 Expected invocation payload:
     {"prompt": "Detect a plateau and surface the one decision for this user."}
+
+Local verification payload (no Bedrock credentials required):
+    {"mode": "local"}
 """
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from bedrock_agentcore import BedrockAgentCoreApp
 
+from flylab.connectome import load_params
+from flylab.evolution import Swarm
+from flylab.genotype import Fly
 from flylab.strands_agent import build_strands_agent
+from flylab.twin import BehavioralTwin, UserProfile
 
 app = BedrockAgentCoreApp()
 _agent = None
@@ -26,9 +34,50 @@ def _get_agent():
     return _agent
 
 
+def _default_current() -> Fly:
+    return Fly(
+        calorie_target=1500,
+        protein_pct=0.40,
+        carb_pct=0.25,
+        meal_window=8,
+        meal_count=3,
+        late_night_rule=False,
+        workout_freq=5,
+        workout_type="cardio",
+        sleep_target=7.0,
+        refeed_schedule="none",
+        step_target=10000,
+    )
+
+
+def _run_local_swarm(payload: dict[str, Any]) -> dict[str, Any]:
+    """Run the fruit-fly swarm directly, without a model call."""
+    profile = UserProfile(
+        name="deployed_smoke_test",
+        start_weight_kg=88.0,
+        adherence_base=float(payload.get("adherence_base", 0.6)),
+        binge_sensitivity=float(payload.get("binge_sensitivity", 0.6)),
+        metabolic_adaptation=float(payload.get("metabolic_adaptation", 0.5)),
+        water_noise_kg=0.4,
+        maintenance_kcal=2300.0,
+    )
+    twin = BehavioralTwin(profile, connectome=load_params())
+    result = Swarm(twin, population_size=300, generations=30, seed=7).run()
+    return {
+        "mode": "local",
+        "champion": asdict(result.best_fly),
+        "fitness": round(result.best_score, 3),
+        "adherence": round(twin.adherence(result.best_fly), 3),
+        "binge_risk": round(twin.binge_risk(result.best_fly), 3),
+    }
+
+
 @app.entrypoint
 async def main(payload: dict[str, Any]) -> dict[str, Any]:
     """Run the fruit-fly agent and return a serializable result."""
+    if payload.get("mode") == "local":
+        return _run_local_swarm(payload)
+
     prompt = payload.get("prompt")
     if not isinstance(prompt, str) or not prompt.strip():
         return {"error": "payload.prompt must be a non-empty string"}

@@ -117,5 +117,7 @@ week 12: (quiet)
 - [ ] 三个命令都能从仓库根目录直接运行，无外部 API 依赖。
 - [ ] 测试通过：`python tests/test_evolution.py -v`
 - [ ] README 的 Real Connectome Grounding 数据与 `examples/demo_connectome.py` 一致。
+- [ ] 进化看板图：`assets/evolution_dashboard.png`
+- [ ] 架构图：`diagrams/fly_weight_lab_architecture.png`
 - [ ] 视频里任何「代谢」字样都替换为「行为响应」。
 - [ ] 提交页面放仓库链接、Demo 视频、PRD、技术方案、Demo 分镜。

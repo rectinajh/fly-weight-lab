@@ -83,6 +83,8 @@ The repository now contains a runnable end-to-end MVP, not just the idea:
 - **Optional Strands SDK bridge** (`flylab/strands_agent.py`) exposes `run_swarm` and `is_plateau` as tools for a model-driven agent.
 - **Verified SDK path** — `pip install -r requirements-strands.txt`, then `build_strands_agent()` constructs a `strands.Agent` without needing live AWS calls.
 - **AgentCore runtime entrypoint** (`agentcore/main.py`) wraps the Strands agent in `BedrockAgentCoreApp`; `/invocations` and `/ping` routes register successfully.
+- **Local verification path** — `POST /invocations` with `{"mode":"local"}` runs the real swarm without Bedrock credentials.
+- **Deployment assets** — `Dockerfile` plus `scripts/deploy_agentcore.py` build a linux/arm64 image, push it to ECR, and create the AgentCore runtime.
 
 Runnable demos:
 
@@ -101,9 +103,13 @@ Verification:
 - [`docs/TECHNICAL_DESIGN.md`](./docs/TECHNICAL_DESIGN.md) — architecture and implementation plan.
 - [`docs/DEMO_STORYBOARD.md`](./docs/DEMO_STORYBOARD.md) — 5-minute hackathon demo script.
 - [`docs/AGENTCORE_DEPLOYMENT.md`](./docs/AGENTCORE_DEPLOYMENT.md) — AWS Bedrock AgentCore deployment guide.
+- [`assets/evolution_dashboard.png`](./assets/evolution_dashboard.png) — polished 2880x1600 evolution dashboard generated from real runs.
+- [`diagrams/fly_weight_lab_architecture.svg`](./diagrams/fly_weight_lab_architecture.svg) — editable architecture diagram.
+- [`diagrams/fly_weight_lab_architecture.png`](./diagrams/fly_weight_lab_architecture.png) — architecture diagram PNG for submissions.
 - [`requirements-strands.txt`](./requirements-strands.txt) — optional Strands Agents SDK integration.
 - [`requirements-agentcore.txt`](./requirements-agentcore.txt) — optional AgentCore runtime dependency.
 - [`agentcore/`](./agentcore) — deployable AgentCore runtime entrypoint.
+- [`Dockerfile`](./Dockerfile) — linux/arm64 container image for AgentCore Runtime.
 - [`flylab/`](./flylab) — genetic swarm, behavioral twin, connectome grounding, decision surface, and background agent loop.
 - [`examples/`](./examples) — runnable demos (plateau breaker, connectome, background agent).
 - [`tests/`](./tests) — automated verification.

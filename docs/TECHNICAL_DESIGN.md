@@ -81,7 +81,9 @@ AgentCore 部署入口：
 
 - `agentcore/main.py` 使用 `BedrockAgentCoreApp` 包装 Strands agent。
 - `@app.entrypoint` 接收 `{"prompt": "..."}`，调用 `agent.invoke_async(prompt)` 并返回可序列化结果。
+- 额外支持 `{"mode":"local"}`，直接跑 `Swarm`，供无 Bedrock 凭据的部署烟测。
 - AgentCore Runtime 自动提供 `POST /invocations` 与 `GET /ping`；本地已确认 routes 与 handler 注册成功。
+- `Dockerfile` 构建 linux/arm64 镜像；`scripts/deploy_agentcore.py` 完成 ECR 推送与 `create_agent_runtime`。
 - 完整部署步骤见 `docs/AGENTCORE_DEPLOYMENT.md`。
 
 ### 2.5 进化看板
@@ -179,6 +181,8 @@ fitness = w1*total_loss + w2*adherence
 | `flylab/agent_loop.py` | 后台 agent 循环 + 状态保存/恢复（JSON 持久化） |
 | `flylab/strands_agent.py` | 可选 Strands Agents SDK 桥接 |
 | `agentcore/main.py` | Bedrock AgentCore Runtime 部署入口 |
+| `scripts/make_dashboard.py` | 用真实运行结果生成 2880x1600 进化看板 |
+| `scripts/deploy_agentcore.py` | ECR 构建推送 + AgentCore runtime 创建 |
 | `examples/demo_agent.py` | 12 周后台 agent 演示 |
 | `tests/test_evolution.py` | 自动验证：基因型、蜂群、连接组、后台循环安静性 |
 
