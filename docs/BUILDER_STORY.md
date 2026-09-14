@@ -2,6 +2,10 @@
 
 **Agents for Humans Hackathon · Everyday Agents**
 
+> This is the short story. The full publication-ready builder.aws post, including
+> the architecture, the four deployment bugs, and the screenshots, is in
+> [BUILDER_AWS_POST.md](./BUILDER_AWS_POST.md).
+
 ## Why I built this
 
 Weight loss is the most universal goal I know that also makes people doubt

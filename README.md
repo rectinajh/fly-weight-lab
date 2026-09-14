@@ -209,7 +209,8 @@ Runnable demos:
 | [`docs/LOCAL_DEMO.md`](./docs/LOCAL_DEMO.md) | local backend and frontend guide |
 | [`docs/REAL_DATA.md`](./docs/REAL_DATA.md) | source, license, and normalization of the Fitbit data |
 | [`docs/EVALUATION.md`](./docs/EVALUATION.md) | offline evaluation reference numbers |
-| [`docs/BUILDER_STORY.md`](./docs/BUILDER_STORY.md) | builder.aws bonus post draft |
+| [`docs/BUILDER_AWS_POST.md`](./docs/BUILDER_AWS_POST.md) | full builder.aws post (title includes "Agents for Humans") plus publishing notes |
+| [`docs/BUILDER_STORY.md`](./docs/BUILDER_STORY.md) | short builder story / social summary |
 | [`agentcore/`](./agentcore) | deployable AgentCore runtime entrypoint |
 | [`flylab/`](./flylab) | swarm, twin, calibration, safety, memory, evaluation, telemetry |
 | [`web/`](./web) | Vercel frontend, canvas visuals, serverless proxy |
