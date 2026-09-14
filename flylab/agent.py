@@ -26,48 +26,76 @@ def surface_decision(
 
     if current is not None:
         if champion.calorie_target > current.calorie_target:
-            actions.append(f"把每日热量目标从 {current.calorie_target} 上调到 {champion.calorie_target} kcal")
-            reasons.append("继续压热量会进一步压低坚持度并触发代谢适应")
+            actions.append(
+                f"Raise your daily calorie target from {current.calorie_target} to {champion.calorie_target} kcal"
+            )
+            reasons.append(
+                "Further restriction would push adherence down and trigger metabolic adaptation"
+            )
         elif champion.calorie_target < current.calorie_target:
-            actions.append(f"把每日热量目标从 {current.calorie_target} 下调到 {champion.calorie_target} kcal")
-            reasons.append("在不显著增加暴食风险的前提下，收紧一点可持续的热量缺口")
+            actions.append(
+                f"Lower your daily calorie target from {current.calorie_target} to {champion.calorie_target} kcal"
+            )
+            reasons.append(
+                "A slightly tighter deficit that does not meaningfully raise binge risk"
+            )
         if champion.late_night_rule and not current.late_night_rule:
-            actions.append("允许一份固定的睡前加餐")
-            reasons.append("对容易暴食的人，保留固定深夜加餐能降低暴食风险")
+            actions.append("Keep a fixed late-night snack")
+            reasons.append(
+                "For binge-prone users, a fixed late-night snack lowers binge risk"
+            )
         if champion.late_night_rule is False and current.late_night_rule:
-            actions.append("取消固定的睡前加餐")
-            reasons.append("你当前的暴食风险较低，不再需要这份固定加餐来保护坚持度")
+            actions.append("Drop the fixed late-night snack")
+            reasons.append(
+                "Your current binge risk is low enough that the protective snack is no longer needed"
+            )
         if champion.refeed_schedule != "none" and current.refeed_schedule == "none":
-            actions.append(f"每周安排一次计划内高热量日（{champion.refeed_schedule}）")
-            reasons.append("计划内 refeed 能缓解长期节食的反弹压力")
+            actions.append(
+                f"Schedule a planned refeed day ({champion.refeed_schedule})"
+            )
+            reasons.append(
+                "A planned refeed eases the rebound pressure of prolonged restriction"
+            )
         if champion.refeed_schedule == "none" and current.refeed_schedule != "none":
-            actions.append("取消计划内 refeed 日")
-            reasons.append("当前暴食风险不需要靠 refeed 缓冲，取消它能提高真实热量缺口")
+            actions.append("Remove the planned refeed day")
+            reasons.append(
+                "Your binge risk no longer needs the refeed buffer, so removing it improves the real deficit"
+            )
         if champion.sleep_target > current.sleep_target:
-            actions.append(f"先把睡眠补到 {champion.sleep_target} 小时")
-            reasons.append("睡眠债会同时抬升暴食风险和降低坚持度")
+            actions.append(f"Prioritize sleep up to {champion.sleep_target} hours")
+            reasons.append(
+                "Sleep debt raises binge risk and lowers adherence at the same time"
+            )
         if champion.meal_window > current.meal_window:
-            actions.append(f"把进食窗口放宽到 {champion.meal_window} 小时")
-            reasons.append("过窄的进食窗口是暴食的触发源")
+            actions.append(f"Widen the eating window to {champion.meal_window} hours")
+            reasons.append("A narrower eating window is a common binge trigger")
         if champion.step_target > current.step_target:
-            actions.append(f"把每日步数目标从 {current.step_target} 提高到 {champion.step_target}")
-            reasons.append("先通过非运动活动量提高总消耗，而不是继续压饮食")
+            actions.append(
+                f"Raise your daily step target from {current.step_target} to {champion.step_target}"
+            )
+            reasons.append(
+                "Raise total energy expenditure through daily movement instead of cutting food further"
+            )
         if (
             champion.workout_freq != current.workout_freq
             or champion.workout_type != current.workout_type
         ):
             actions.append(
-                f"把训练节奏调整为每周 {champion.workout_freq} 次 {champion.workout_type}"
+                f"Shift training to {champion.workout_freq} {champion.workout_type} sessions per week"
             )
-            reasons.append("训练节奏应该服务于长期坚持，而不是制造额外的饮食压力")
+            reasons.append(
+                "Training volume should serve long-term adherence, not create extra dietary pressure"
+            )
 
     if not actions:
-        actions.append(f"锁定这套方案：{champion.describe()}")
-        reasons.append("蜂群多代收敛后，这是坚持度与减脂效果综合最优的冠军")
+        actions.append(f"Lock in this protocol: {champion.describe()}")
+        reasons.append(
+            "After multi-generation convergence, this champion balances adherence and fat loss best"
+        )
 
-    headline = "平台期已检测到，需要切换方案" if plateau_detected else "本周建议切换到这个方案"
+    headline = "Plateau detected — switch protocol" if plateau_detected else "Switch to this protocol this week"
     return Decision(
         headline=headline,
-        action="；".join(actions[:2]),
-        reason="。".join(reasons[:2]) + "。",
+        action="; ".join(actions[:2]),
+        reason=". ".join(reasons[:2]) + ".",
     )

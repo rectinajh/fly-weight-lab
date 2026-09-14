@@ -19,6 +19,8 @@ const state = {
   local: null,
 };
 
+let radarRaf = 0;
+
 function baseUrl() {
   return "/api";
 }
@@ -39,11 +41,11 @@ async function checkPing() {
     if (!response.ok) throw new Error("not healthy");
     const data = await response.json();
     pingDot.className = "dot ok";
-    pingText.textContent = `已连接真实 AgentCore · ${data.status || "Healthy"}`;
+    pingText.textContent = `Live AgentCore · ${data.status || "Healthy"}`;
     clearError();
   } catch {
     pingDot.className = "dot bad";
-    pingText.textContent = "AgentCore 不可达";
+    pingText.textContent = "AgentCore unreachable";
   }
 }
 
@@ -71,7 +73,7 @@ function stopLoading() {
   dashboard.classList.remove("hidden");
 }
 
-function sampleFarm(farm, target = 120) {
+function sampleFarm(farm, target = 110) {
   if (!farm || !farm.length) return "";
   const bucket = Math.max(1, Math.round(farm.length / target));
   let out = "";
@@ -88,7 +90,7 @@ function sampleFarm(farm, target = 120) {
 }
 
 function lineChart(points, opts = {}) {
-  const width = opts.width || 720;
+  const width = opts.width || 680;
   const height = opts.height || 220;
   const pad = { l: 44, r: 16, t: 18, b: 30 };
   const series = opts.series || [];
@@ -125,8 +127,7 @@ function lineChart(points, opts = {}) {
   }
 
   const xLabels = opts.xLabels || points.map((_, i) => i);
-  let xText = "";
-  xText += `<text x="${pad.l}" y="${height - 8}" fill="#4c637a" font-size="10">${xLabels[0] ?? 0}</text>`;
+  let xText = `<text x="${pad.l}" y="${height - 8}" fill="#4c637a" font-size="10">${xLabels[0] ?? 0}</text>`;
   xText += `<text x="${width - pad.r}" y="${height - 8}" text-anchor="end" fill="#4c637a" font-size="10">${xLabels[xLabels.length - 1] ?? points.length - 1}</text>`;
 
   return `<svg class="svg-chart" viewBox="0 0 ${width} ${height}" role="img">${grid}${lines}${markers}${xText}</svg>`;
@@ -137,9 +138,9 @@ function donut(protein, carb, fat) {
   const r = 42;
   const c = 2 * Math.PI * r;
   const segments = [
-    { value: protein, color: "#4cc9f0", label: "蛋白" },
-    { value: carb, color: "#35d07f", label: "碳水" },
-    { value: fat, color: "#ffd166", label: "脂肪" },
+    { value: protein, color: "#4cc9f0", label: "Protein" },
+    { value: carb, color: "#35d07f", label: "Carbs" },
+    { value: fat, color: "#ffd166", label: "Fat" },
   ];
   let offset = 0;
   let circles = "";
@@ -148,11 +149,10 @@ function donut(protein, carb, fat) {
     circles += `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${seg.color}" stroke-width="15" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 60 60)"/>`;
     offset += len;
   }
-  return `<svg viewBox="0 0 120 120" style="width:120px;height:120px" role="img">${circles}<text x="60" y="56" text-anchor="middle" fill="#eaf2fb" font-size="16" font-weight="700">${Math.round(protein * 100)}%</text><text x="60" y="72" text-anchor="middle" fill="#8aa0b8" font-size="10">蛋白质</text></svg>`;
+  return `<svg viewBox="0 0 120 120" style="width:120px;height:120px" role="img">${circles}<text x="60" y="56" text-anchor="middle" fill="#eaf2fb" font-size="16" font-weight="700">${Math.round(protein * 100)}%</text><text x="60" y="72" text-anchor="middle" fill="#8aa0b8" font-size="10">Protein</text></svg>`;
 }
 
 function fmtPct(v) { return `${Math.round((v || 0) * 100)}%`; }
-function fmtKg(v) { return `${Number(v || 0).toFixed(1)} kg`; }
 
 function updateConnectome(connectome) {
   if (!connectome) return;
@@ -162,18 +162,109 @@ function updateConnectome(connectome) {
   document.getElementById("statRatio").textContent = `${connectome.reward_punishment_ratio ?? "2.56"}:1`;
 }
 
+function initRadar(canvas, evolution) {
+  cancelAnimationFrame(radarRaf);
+  if (!canvas || !evolution?.generations?.length) return;
+
+  const size = 240;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const R_outer = 104;
+  const R_inner = 20;
+  const gens = evolution.generations;
+  const bests = gens.map((g) => g.best);
+  const min = Math.min(...bests);
+  const max = Math.max(...bests);
+  const range = max - min || 1;
+  const totalAngle = Math.PI * 3.1;
+
+  const pts = gens.map((g, i) => {
+    const ang = -Math.PI / 2 + (i / Math.max(1, gens.length - 1)) * totalAngle;
+    const r = R_inner + (1 - (g.best - min) / range) * (R_outer - R_inner);
+    return { x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r, t: i / Math.max(1, gens.length - 1) };
+  });
+
+  let sweep = 0;
+  function draw() {
+    ctx.clearRect(0, 0, size, size);
+
+    for (let i = 1; i <= 4; i += 1) {
+      const r = (R_outer / 4) * i;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(77,144,200,0.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(cx - R_outer, cy);
+    ctx.lineTo(cx + R_outer, cy);
+    ctx.moveTo(cx, cy - R_outer);
+    ctx.lineTo(cx, cy + R_outer);
+    ctx.strokeStyle = "rgba(77,144,200,0.18)";
+    ctx.stroke();
+
+    if (pts.length > 1) {
+      ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+      ctx.strokeStyle = "rgba(76,201,240,0.45)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+
+    for (const p of pts) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(53, 208, 127, ${0.25 + 0.75 * p.t})`;
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6 + Math.sin(sweep * 0.35) * 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(53,208,127,0.9)";
+    ctx.shadowColor = "rgba(53,208,127,0.85)";
+    ctx.shadowBlur = 14;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    const sx = cx + Math.cos(sweep) * R_outer;
+    const sy = cy + Math.sin(sweep) * R_outer;
+    const grad = ctx.createLinearGradient(cx, cy, sx, sy);
+    grad.addColorStop(0, "rgba(53,208,127,0.95)");
+    grad.addColorStop(1, "rgba(53,208,127,0)");
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(sx, sy);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    sweep += 0.035;
+    radarRaf = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
 function evolutionCard(evolution, title, subtitle) {
   const gens = evolution?.generations || [];
   if (!gens.length) return "";
   const points = gens.map((g) => ({ best: g.best, mean: g.mean }));
-  const series = [
-    { key: "best", color: "#35d07f", width: 2.6 },
-    { key: "mean", color: "#4cc9f0", width: 1.6, opacity: 0.85 },
-  ];
   const chart = lineChart(points, {
-    width: 720,
+    width: 640,
     height: 220,
-    series,
+    series: [
+      { key: "best", color: "#35d07f", width: 2.6 },
+      { key: "mean", color: "#4cc9f0", width: 1.6, opacity: 0.85 },
+    ],
     xLabels: gens.map((g) => g.generation),
   });
 
@@ -191,12 +282,15 @@ function evolutionCard(evolution, title, subtitle) {
   return `
     <article class="card wide">
       <div class="card-head">
-        <div><p class="kicker">Genetic swarm</p><h2>${title}</h2><p class="note">${subtitle}</p></div>
-        <div class="legend"><span class="q">存活</span><span class="s">淘汰</span></div>
+        <div><p class="kicker">Genetic swarm · convergence radar</p><h2>${title}</h2><p class="note">${subtitle}</p></div>
+        <div class="legend"><span class="q">survives</span><span class="s">culled</span></div>
       </div>
-      ${chart}
+      <div class="evo-grid">
+        <div class="radar-wrap"><canvas id="radarCanvas"></canvas></div>
+        <div class="evo-line">${chart}</div>
+      </div>
       <div class="farm">${farmRows}</div>
-      <p class="note">每一行是一代果蝇：绿色存活进入下一代，红色被淘汰。best（绿线）一路收敛，mean（青线）说明整个蜂群越来越像冠军。</p>
+      <p class="note">The radar sweeps generation by generation. Best fitness (green line) spirals inward toward the champion while the population mean (cyan line) rises to meet it.</p>
     </article>`;
 }
 
@@ -204,74 +298,74 @@ function weightCard(report) {
   const ws = report.real_weight_summary;
   const checkpoints = ws?.weekly_checkpoints || [];
   if (checkpoints.length < 2) {
-    return `<article class="card"><div class="card-head"><div><p class="kicker">Real data</p><h2>真实体重轨迹</h2></div></div><p class="note">数据点不足以绘制轨迹。</p></article>`;
+    return `<article class="card"><div class="card-head"><div><p class="kicker">Real data</p><h2>Real weight trajectory</h2></div></div><p class="note">Not enough checkpoints to plot.</p></article>`;
   }
   const points = checkpoints.map((c) => ({ value: c.weight_kg }));
-  const markers = (report.surfaced_weeks || []).map((w) => ({ index: w - 1, value: checkpoints[w - 1]?.weight_kg }));
+  const markers = (report.surfaced_weeks || [])
+    .map((w) => ({ index: w - 1, value: checkpoints[w - 1]?.weight_kg }))
+    .filter((m) => m.index >= 0 && m.value != null);
   const chart = lineChart(points, {
     width: 620,
     height: 220,
     series: [{ key: "value", color: "#4cc9f0", width: 2.4 }],
-    markers: markers.filter((m) => m.index >= 0 && m.value != null),
+    markers,
     xLabels: checkpoints.map((_, i) => `W${i + 1}`),
   });
+  const change = ws.observed_weight_change_kg;
+  const sign = change > 0 ? "−" : "+";
   return `
     <article class="card">
       <div class="card-head">
-        <div><p class="kicker">Real Fitbit data</p><h2>真实体重轨迹</h2><p class="note">${ws.n_records} 条真实体重记录 · ${ws.start_weight_kg} kg → ${ws.end_weight_kg} kg（${ws.observed_weight_change_kg > 0 ? "−" : "+"}${Math.abs(ws.observed_weight_change_kg).toFixed(1)} kg）</p></div>
+        <div><p class="kicker">Real Fitbit data</p><h2>Real weight trajectory</h2><p class="note">${ws.n_records} real weight records · ${ws.start_weight_kg} kg → ${ws.end_weight_kg} kg (${sign}${Math.abs(change).toFixed(1)} kg)</p></div>
       </div>
       ${chart}
-      <p class="note">黄色 × 是 agent 冒出来给决定的周。其余周保持安静。</p>
+      <p class="note">Yellow × marks the weeks the agent surfaced a decision. Every other week stays quiet.</p>
     </article>`;
 }
 
 function timelineCard(report) {
   const flow = report.flow || [];
   const ticks = flow
-    .map((f) => {
-      const cls = f.decision ? "surfaced" : "quiet";
-      const symbol = f.decision ? "★" : "·";
-      return `<div class="tick ${cls}" title="week ${f.week}">${symbol}</div>`;
-    })
+    .map((f) => `<div class="tick ${f.decision ? "surfaced" : "quiet"}" title="week ${f.week}">${f.decision ? "★" : "·"}</div>`)
     .join("");
   const surfaced = flow.filter((f) => f.decision).length;
   const quiet = flow.length - surfaced;
   return `
     <article class="card">
       <div class="card-head">
-        <div><p class="kicker">Background agent</p><h2>后台 agent 时间线</h2><p class="note">${flow.length} 周里只冒出来 ${surfaced} 次，其余 ${quiet} 周安静。</p></div>
+        <div><p class="kicker">Background agent</p><h2>Background agent timeline</h2><p class="note">${flow.length} weeks · surfaced ${surfaced}× · quiet ${quiet}×</p></div>
       </div>
       <div class="timeline">${ticks}</div>
-      <div class="legend"><span class="q">安静</span><span class="s">只给一个决定</span></div>
-      <p class="note">它不是推送提醒，而是在后台消化体重噪音，只在平台期或冠军方案真正改变时打扰你。</p>
+      <div class="legend"><span class="q">quiet</span><span class="s">one decision</span></div>
+      <p class="note">It is not a notification feed. It absorbs noisy weekly weight in the background and surfaces only on a real plateau or protocol change.</p>
     </article>`;
 }
 
-function championCard(champion, title = "冠军方案") {
+function championCard(champion, title = "Champion protocol") {
   if (!champion) return "";
   const fat = Math.max(0, 1 - (champion.protein_pct || 0) - (champion.carb_pct || 0));
   const workout = `${champion.workout_freq}× ${champion.workout_type}`;
   const cells = [
-    { value: `${champion.meal_window}h`, label: "进食窗口" },
-    { value: `${champion.meal_count} 餐`, label: "每日餐次" },
-    { value: `${champion.sleep_target}h`, label: "睡眠目标" },
-    { value: `${champion.step_target}`, label: "每日步数" },
-    { value: workout, label: "训练节奏" },
-    { value: champion.refeed_schedule === "none" ? "无" : champion.refeed_schedule, label: "计划 refeed" },
-    { value: champion.late_night_rule ? "保留" : "不保留", label: "固定睡前加餐" },
-    { value: champion.calorie_target, label: "每日热量" },
-    { value: `${fmtPct(champion.carb_pct)}`, label: "碳水占比" },
+    { value: `${champion.meal_window}h`, label: "Eating window" },
+    { value: `${champion.meal_count} meals`, label: "Meals / day" },
+    { value: `${champion.sleep_target}h`, label: "Sleep target" },
+    { value: `${champion.step_target}`, label: "Steps / day" },
+    { value: workout, label: "Training" },
+    { value: champion.refeed_schedule === "none" ? "none" : champion.refeed_schedule, label: "Planned refeed" },
+    { value: champion.late_night_rule ? "kept" : "removed", label: "Late-night snack" },
+    { value: `${champion.calorie_target}`, label: "Daily kcal" },
+    { value: fmtPct(champion.carb_pct), label: "Carb share" },
   ];
   return `
     <article class="card">
       <div class="card-head"><div><p class="kicker">Evolved champion</p><h2>${title}</h2></div></div>
-      <div class="big-number">${champion.calorie_target}<small> kcal/天</small></div>
+      <div class="big-number">${champion.calorie_target}<small> kcal/day</small></div>
       <div class="donut-wrap" style="margin:16px 0">
         ${donut(champion.protein_pct, champion.carb_pct, fat)}
         <div class="macro-list">
-          <div class="macro"><span class="swatch" style="background:#4cc9f0"></span>蛋白 <b>${fmtPct(champion.protein_pct)}</b></div>
-          <div class="macro"><span class="swatch" style="background:#35d07f"></span>碳水 <b>${fmtPct(champion.carb_pct)}</b></div>
-          <div class="macro"><span class="swatch" style="background:#ffd166"></span>脂肪 <b>${fmtPct(fat)}</b></div>
+          <div class="macro"><span class="swatch" style="background:#4cc9f0"></span>Protein <b>${fmtPct(champion.protein_pct)}</b></div>
+          <div class="macro"><span class="swatch" style="background:#35d07f"></span>Carbs <b>${fmtPct(champion.carb_pct)}</b></div>
+          <div class="macro"><span class="swatch" style="background:#ffd166"></span>Fat <b>${fmtPct(fat)}</b></div>
         </div>
       </div>
       <div class="champion-grid">${cells.map((c) => `<div class="champ-cell"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`).join("")}</div>
@@ -281,17 +375,17 @@ function championCard(champion, title = "冠军方案") {
 function decisionCard(report) {
   const decision = report.decision;
   if (!decision) {
-    return `<article class="card"><div class="card-head"><div><p class="kicker">One decision</p><h2>唯一决定</h2></div></div><p class="note">这几周没有需要打扰你的事。</p></article>`;
+    return `<article class="card"><div class="card-head"><div><p class="kicker">One decision</p><h2>One decision</h2></div></div><p class="note">Nothing worth interrupting you this period.</p></article>`;
   }
   return `
     <article class="card">
-      <div class="card-head"><div><p class="kicker">One decision at a time</p><h2>唯一决定</h2></div></div>
+      <div class="card-head"><div><p class="kicker">One decision at a time</p><h2>One decision</h2></div></div>
       <div class="decision-box">
         <p class="headline">${decision.headline}</p>
         <p class="action">${decision.action}</p>
         <p class="reason">${decision.reason}</p>
       </div>
-      <p class="note">不是五页建议清单，而是一个你现在就能执行的下一步。</p>
+      <p class="note">Not five pages of suggestions — one next step you can actually take.</p>
     </article>`;
 }
 
@@ -301,23 +395,21 @@ function safetyCalibrationCard(report) {
   const binge = cal.binge_sensitivity ?? 0;
   const adaptation = cal.metabolic_adaptation ?? 0;
   const adherence = cal.adherence_base ?? 0;
-  const warnings = (safety.warnings || []).length
-    ? safety.warnings.join("；")
-    : "无风险警告";
+  const warnings = (safety.warnings || []).length ? safety.warnings.join("; ") : "No risk warnings";
   const gauges = [
-    { label: "暴食敏感度", value: binge, display: binge.toFixed(2) },
-    { label: "代谢适应", value: adaptation, display: adaptation.toFixed(2) },
-    { label: "坚持度先验", value: adherence, display: adherence.toFixed(2) },
+    { label: "Binge sensitivity", value: binge, display: binge.toFixed(2) },
+    { label: "Metabolic adaptation", value: adaptation, display: adaptation.toFixed(2) },
+    { label: "Adherence prior", value: adherence, display: adherence.toFixed(2) },
   ];
   return `
     <article class="card">
-      <div class="card-head"><div><p class="kicker">Calibration · Safety</p><h2>从真实数据拟合</h2></div></div>
+      <div class="card-head"><div><p class="kicker">Calibration · Safety</p><h2>Fitted from real data</h2></div></div>
       <div class="gauge-row">
         ${gauges.map((g) => `<div class="gauge"><div class="gauge-top"><span>${g.label}</span><b>${g.display}</b></div><div class="bar"><div class="fill" style="width:${Math.round(g.value * 100)}%"></div></div></div>`).join("")}
       </div>
       <div style="margin-top:16px;font-size:13px">
-        <p style="margin:0 0 6px;color:var(--muted)">安全边界：<b style="color:${safety.red_flags ? "var(--red)" : "var(--green)"}">${safety.red_flags ? "已触发升级" : "通过"}</b></p>
-        <p class="note">${warnings}。这个 agent 只做行为哨兵，不诊断、不处方。</p>
+        <p style="margin:0 0 6px;color:var(--muted)">Safety boundary: <b style="color:${safety.red_flags ? "var(--red)" : "var(--green)"}">${safety.red_flags ? "Escalation triggered" : "Passed"}</b></p>
+        <p class="note">${warnings}. This agent is a behavioral sentinel — not a diagnosis, not a prescription.</p>
       </div>
     </article>`;
 }
@@ -325,11 +417,11 @@ function safetyCalibrationCard(report) {
 function compareCard(a, b) {
   if (!a || !b) return "";
   const rows = (side, other) => [
-    { label: "每日热量", value: `${side.champion.calorie_target} kcal`, diff: side.champion.calorie_target !== other.champion.calorie_target },
-    { label: "睡前加餐", value: side.champion.late_night_rule ? "保留" : "不保留", diff: side.champion.late_night_rule !== other.champion.late_night_rule },
-    { label: "计划 refeed", value: side.champion.refeed_schedule === "none" ? "无" : side.champion.refeed_schedule, diff: side.champion.refeed_schedule !== other.champion.refeed_schedule },
-    { label: "睡眠目标", value: `${side.champion.sleep_target}h`, diff: side.champion.sleep_target !== other.champion.sleep_target },
-    { label: "暴食敏感度", value: side.calibration.profile.binge_sensitivity.toFixed(2), diff: Math.abs(side.calibration.profile.binge_sensitivity - other.calibration.profile.binge_sensitivity) > 0.05 },
+    { label: "Daily kcal", value: `${side.champion.calorie_target}`, diff: side.champion.calorie_target !== other.champion.calorie_target },
+    { label: "Late-night snack", value: side.champion.late_night_rule ? "kept" : "removed", diff: side.champion.late_night_rule !== other.champion.late_night_rule },
+    { label: "Planned refeed", value: side.champion.refeed_schedule === "none" ? "none" : side.champion.refeed_schedule, diff: side.champion.refeed_schedule !== other.champion.refeed_schedule },
+    { label: "Sleep target", value: `${side.champion.sleep_target}h`, diff: side.champion.sleep_target !== other.champion.sleep_target },
+    { label: "Binge sensitivity", value: side.calibration.profile.binge_sensitivity.toFixed(2), diff: Math.abs(side.calibration.profile.binge_sensitivity - other.calibration.profile.binge_sensitivity) > 0.05 },
   ];
   const sideHtml = (side, other, name) => `
     <div class="side">
@@ -339,11 +431,11 @@ function compareCard(a, b) {
   return `
     <article class="card wide">
       <div class="card-head">
-        <div><p class="kicker">Personalization proof</p><h2>两个真实用户 · 同样目标 · 相反方案</h2><p class="note">同一个蜂群引擎，面对不同的行为数据，进化出不同的冠军。这才是“个性化”，不是套模板。</p></div>
+        <div><p class="kicker">Personalization proof</p><h2>Two real users · same goal · opposite protocols</h2><p class="note">The same swarm engine, different real behavioral data, different champions. That is personalization, not a template.</p></div>
       </div>
       <div class="compare">
-        ${sideHtml(a, b, `用户 A · ${a.user_id}`)}
-        ${sideHtml(b, a, `用户 B · ${b.user_id}`)}
+        ${sideHtml(a, b, `User A · ${a.user_id}`)}
+        ${sideHtml(b, a, `User B · ${b.user_id}`)}
       </div>
     </article>`;
 }
@@ -352,16 +444,16 @@ function renderDemo(report, compare) {
   updateConnectome(report.connectome);
   const source = report.data_source
     ? `${report.data_source.path} · Zenodo ${report.data_source.zenodo} (${report.data_source.license})`
-    : "用户上传数据";
+    : "uploaded data";
 
   const html = `
     <article class="card wide">
       <div class="card-head">
-        <div><p class="kicker">Real business flow</p><h2>用户 ${report.user_id}</h2><p class="note">${report.real_weight_summary.n_records} 条真实体重记录 → 校准行为孪生 → 后台周 tick → 只冒出一个决定 → 记录真实反馈。</p></div>
+        <div><p class="kicker">Real business flow</p><h2>User ${report.user_id}</h2><p class="note">${report.real_weight_summary.n_records} real weight records → calibrate the twin → weekly background ticks → one surfaced decision → durable feedback.</p></div>
         <div class="runtime-tag">${source}</div>
       </div>
     </article>
-    ${evolutionCard(report.evolution, "蜂群进化", "赛博果蝇在数字孪生里跑了一万次实验，弱方案被淘汰。")}
+    ${evolutionCard(report.evolution, "Swarm evolution", "Cyber flies ran ten thousand experiments on your digital twin. Weak protocols were culled.")}
     <div class="grid-2">
       ${weightCard(report)}
       ${timelineCard(report)}
@@ -374,30 +466,32 @@ function renderDemo(report, compare) {
     ${compareCard(report, compare)}
   `;
   dashboard.innerHTML = html;
+  initRadar(document.getElementById("radarCanvas"), report.evolution);
   stopLoading();
 }
 
 function renderLocal(report) {
   updateConnectome(report.connectome);
   const html = `
-    ${evolutionCard(report.evolution, "蜂群进化 · 快速演示", "直接跑蜂群，看冠军如何从一万次实验中收敛。")}
+    ${evolutionCard(report.evolution, "Swarm evolution · quick run", "Watch the champion converge out of ten thousand experiments.")}
     <div class="grid-2">
       ${championCard(report.champion)}
       <article class="card">
-        <div class="card-head"><div><p class="kicker">Real connectome</p><h2>真实果蝇大脑先验</h2></div></div>
+        <div class="card-head"><div><p class="kicker">Real connectome</p><h2>Real fly-brain prior</h2></div></div>
         <div class="gauge-row">
-          <div class="gauge"><div class="gauge-top"><span>奖赏 : 惩罚</span><b>${report.connectome.reward_punishment_ratio} : 1</b></div><div class="bar"><div class="fill" style="width:72%"></div></div></div>
-          <p class="note">${report.connectome.n_kenyon} 个 Kenyon cell 压缩到 ${report.connectome.n_mbon} 个决策单元；真实线路里奖赏远强于惩罚，所以激进节食会触发更强的反弹压力。</p>
+          <div class="gauge"><div class="gauge-top"><span>Reward : punishment</span><b>${report.connectome.reward_punishment_ratio} : 1</b></div><div class="bar"><div class="fill" style="width:72%"></div></div></div>
+          <p class="note">${report.connectome.n_kenyon} Kenyon cells compress into ${report.connectome.n_mbon} decision units; reward strongly outranks punishment, so aggressive restriction triggers disproportionate craving pressure.</p>
         </div>
         <div class="champion-grid" style="margin-top:14px">
-          <div class="champ-cell"><div class="value">${report.connectome.kc_mbon_convergence}</div><div class="label">KC / MBON 收敛</div></div>
-          <div class="champ-cell"><div class="value">${report.adherence}</div><div class="label">冠军坚持度</div></div>
-          <div class="champ-cell"><div class="value">${report.binge_risk}</div><div class="label">暴食风险</div></div>
+          <div class="champ-cell"><div class="value">${report.connectome.kc_mbon_convergence}</div><div class="label">KC / MBON convergence</div></div>
+          <div class="champ-cell"><div class="value">${report.adherence}</div><div class="label">Champion adherence</div></div>
+          <div class="champ-cell"><div class="value">${report.binge_risk}</div><div class="label">Binge risk</div></div>
         </div>
       </article>
     </div>
   `;
   dashboard.innerHTML = html;
+  initRadar(document.getElementById("radarCanvas"), report.evolution);
   stopLoading();
 }
 
@@ -407,7 +501,7 @@ async function runDemoFlow() {
   const userB = userA === "6962181067" ? "8877689391" : "6962181067";
   const payloadA = { mode: "demo", user_id: userA, population_size: 250, generations: 25, seed: 7 };
   const payloadB = { mode: "demo", user_id: userB, population_size: 250, generations: 25, seed: 7 };
-  setLoading(`正在用真实 Fitbit 数据进化 ${userA} 与 ${userB} 的蜂群…`);
+  setLoading(`Evolving the ${userA} and ${userB} swarms on real Fitbit data…`);
   try {
     const [a, b] = await Promise.all([post(payloadA), post(payloadB)]);
     state.demo = a;
@@ -421,7 +515,7 @@ async function runDemoFlow() {
 
 async function runSwarmFlow() {
   clearError();
-  setLoading("果蝇正在后台跑一万次实验…");
+  setLoading("The flies are running ten thousand experiments…");
   try {
     const report = await post({});
     state.local = report;
@@ -474,7 +568,7 @@ async function readFile(file) {
 async function runUploadFlow() {
   clearError();
   if (!weightFile.files[0]) {
-    showError("请先选择体重 CSV（或直接用上面的真实用户数据）。");
+    showError("Choose a weight CSV first — or just use the preloaded real users above.");
     return;
   }
   const weightRows = await readFile(weightFile.files[0]);
@@ -488,10 +582,10 @@ async function runUploadFlow() {
     .map((r) => ({ date: r.date, total_steps: parseInt(r.total_steps || "0", 10), active_minutes: parseInt(r.active_minutes || "0", 10), calories: parseInt(r.calories || "0", 10) }))
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!weight_records.length) {
-    showError("体重 CSV 里没有 date / weight_kg 行。");
+    showError("No date / weight_kg rows found in the weight CSV.");
     return;
   }
-  setLoading("正在校准你的行为孪生并进化蜂群…");
+  setLoading("Calibrating your behavioral twin and evolving the swarm…");
   try {
     const report = await post({
       mode: "demo",

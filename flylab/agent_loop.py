@@ -115,9 +115,9 @@ class WeightLossAgent:
         decision: Decision | None = None
         if due and safety.escalation and not self.last_escalation_surfaced:
             decision = Decision(
-                headline="需要先升级给专业医疗人员",
-                action="暂停自动调整方案，并把你的真实体重轨迹交给医生或营养师复核",
-                reason="你的输入数据触发了安全红旗。这个 agent 只做行为哨兵，不诊断、不处方。",
+                headline="Escalate to a clinician first",
+                action="Pause automatic changes and share your real weight trajectory with a doctor or dietitian",
+                reason="Your inputs triggered a safety red flag. This agent is a behavioral sentinel, not a diagnosis or prescription.",
             )
             self.last_escalation_surfaced = True
             self.last_surface_week = week

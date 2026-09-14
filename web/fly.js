@@ -19,61 +19,99 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  function makeFly() {
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      homeX: Math.random() * width,
+      homeY: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: Math.random() * 1.6 + 0.6,
+      alpha: Math.random() * 0.5 + 0.22,
+      green: Math.random() > 0.28,
+      diving: false,
+      diveT: 0,
+      diveCooldown: 80 + Math.random() * 320,
+      prevX: 0,
+      prevY: 0,
+    };
+  }
+
   function spawn() {
-    const count = Math.min(900, Math.max(260, Math.floor((width * height) / 1600)));
-    flies = Array.from({ length: count }, () => {
-      const homeX = Math.random() * width;
-      const homeY = Math.random() * height;
-      return {
-        x: homeX,
-        y: homeY,
-        homeX,
-        homeY,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-        r: Math.random() * 1.6 + 0.6,
-        alpha: Math.random() * 0.5 + 0.2,
-        green: Math.random() > 0.28,
-      };
-    });
+    const count = Math.min(760, Math.max(240, Math.floor((width * height) / 1900)));
+    flies = Array.from({ length: count }, makeFly);
   }
 
   function step() {
     ctx.clearRect(0, 0, width, height);
 
     for (const fly of flies) {
-      fly.x += fly.vx;
-      fly.y += fly.vy;
+      fly.prevX = fly.x;
+      fly.prevY = fly.y;
 
-      const dxHome = fly.homeX - fly.x;
-      const dyHome = fly.homeY - fly.y;
-      fly.vx += dxHome * 0.0005;
-      fly.vy += dyHome * 0.0005;
+      if (fly.diving) {
+        fly.diveT -= 1;
+        fly.vx += (fly.diveVX - fly.vx) * 0.35;
+        fly.vy += (fly.diveVY - fly.vy) * 0.2;
+        if (fly.diveT <= 0) {
+          fly.diving = false;
+          fly.diveCooldown = 180 + Math.random() * 420;
+        }
+      } else {
+        const dxHome = fly.homeX - fly.x;
+        const dyHome = fly.homeY - fly.y;
+        fly.vx += dxHome * 0.0005;
+        fly.vy += dyHome * 0.0005;
 
-      if (pointer.active) {
-        const dx = fly.x - pointer.x;
-        const dy = fly.y - pointer.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < 16000) {
-          const d = Math.sqrt(d2) || 1;
-          const force = (16000 - d2) / 16000;
-          fly.vx += (dx / d) * force * 0.6;
-          fly.vy += (dy / d) * force * 0.6;
+        if (pointer.active) {
+          const dx = fly.x - pointer.x;
+          const dy = fly.y - pointer.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 16000) {
+            const d = Math.sqrt(d2) || 1;
+            const force = (16000 - d2) / 16000;
+            fly.vx += (dx / d) * force * 0.6;
+            fly.vy += (dy / d) * force * 0.6;
+          }
+        }
+
+        fly.diveCooldown -= 1;
+        if (fly.diveCooldown <= 0 && Math.random() < 0.012) {
+          fly.diving = true;
+          fly.diveT = 20 + Math.floor(Math.random() * 18);
+          fly.diveVX = (Math.random() - 0.5) * 7;
+          fly.diveVY = 7 + Math.random() * 12;
         }
       }
 
       fly.vx *= 0.94;
       fly.vy *= 0.94;
+      fly.x += fly.vx;
+      fly.y += fly.vy;
 
-      if (fly.x < -20) fly.x = width + 20;
-      if (fly.x > width + 20) fly.x = -20;
-      if (fly.y < -20) fly.y = height + 20;
-      if (fly.y > height + 20) fly.y = -20;
+      if (fly.x < -24) fly.x = width + 24;
+      if (fly.x > width + 24) fly.x = -24;
+      if (fly.y < -24) fly.y = height + 24;
+      if (fly.y > height + 24) fly.y = -24;
 
       const color = fly.green ? "53, 208, 127" : "76, 201, 240";
+      if (fly.diving) {
+        const grad = ctx.createLinearGradient(fly.prevX, fly.prevY, fly.x, fly.y);
+        grad.addColorStop(0, `rgba(${color}, 0)`);
+        grad.addColorStop(1, `rgba(${color}, ${Math.min(1, fly.alpha + 0.45)})`);
+        ctx.beginPath();
+        ctx.moveTo(fly.prevX, fly.prevY);
+        ctx.lineTo(fly.x, fly.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = fly.r * 1.7;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+
       ctx.beginPath();
       ctx.arc(fly.x, fly.y, fly.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${color}, ${fly.alpha})`;
+      ctx.fillStyle = `rgba(${color}, ${fly.diving ? Math.min(1, fly.alpha + 0.5) : fly.alpha})`;
       ctx.fill();
     }
 
